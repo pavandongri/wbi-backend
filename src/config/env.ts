@@ -1,0 +1,13 @@
+import dotenv from "dotenv";
+import path from "path";
+import { envType } from "../types/common.types";
+
+dotenv.config({
+  path: path.resolve(process.cwd(), ".env"),
+  quiet: true
+});
+
+export const env: envType = {
+  PORT: process.env.PORT ?? "",
+  NODE_ENV: process.env.NODE_ENV ?? ""
+};
