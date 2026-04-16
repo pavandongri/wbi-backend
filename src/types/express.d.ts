@@ -1,6 +1,16 @@
 import "express";
 
 declare module "express-serve-static-core" {
+  interface AuthContext {
+    userId: string;
+    companyId: string;
+    role: string;
+  }
+
+  interface Request {
+    auth?: AuthContext;
+  }
+
   interface Response {
     successResponse: (options?: {
       data?: unknown;

@@ -1,5 +1,5 @@
 import { CONSTANTS } from "constants/common.constants";
-import { HTTP_MESSAGES } from "constants/error-messages.constants";
+import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { NextFunction, Request, Response } from "express";
 import { requestLogger } from "logger/request.logger";
 import { apiErrorResponse } from "utils/api-response";
