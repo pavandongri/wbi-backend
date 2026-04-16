@@ -9,5 +9,8 @@ dotenv.config({
 
 export const env: envType = {
   PORT: process.env.PORT ?? "",
-  NODE_ENV: process.env.NODE_ENV ?? ""
+  NODE_ENV: process.env.NODE_ENV ?? "",
+  DATABASE_URL: process.env.DATABASE_URL ?? "",
+  AUTH_COOKIE_SECRET: process.env.AUTH_COOKIE_SECRET ?? "",
+  CORS_ORIGIN: process.env.CORS_ORIGIN ?? ""
 };

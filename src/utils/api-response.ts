@@ -1,5 +1,5 @@
 import { CONSTANTS } from "constants/common.constants";
-import { HTTP_MESSAGES } from "constants/error-messages.constants";
+import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { Request, Response } from "express";
 

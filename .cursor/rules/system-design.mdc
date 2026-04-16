@@ -1,0 +1,71 @@
+---
+alwaysApply: false
+---
+
+# Backend System Design
+
+## Roles
+
+- super-admin
+- admin
+- agent
+
+## Role Capabilities
+
+### super-admin
+
+- Manages entire application
+- Creates companies and their super-admins
+- Views all dashboards
+- Manages subscription plans
+- Manages billing and revenue
+
+### admin
+
+- Head of a company
+- Manages admins
+- Sends messages
+- Runs campaigns
+- Views company dashboard and reports
+
+### agent
+
+- Sends messages
+- Runs campaigns
+
+## Customers
+
+- End users of a company
+
+## Core Domains
+
+- companies
+- users (admins, agents)
+- customers
+- groups
+- templates
+- chats
+- campaigns
+- workflows
+- subscriptions
+- billing
+
+## System Characteristics
+
+- Multi-company architecture
+- Role-based access control
+- Queue-based processing for heavy tasks
+- Real-time chat using websockets
+
+## Data & Infra
+
+- PostgreSQL (primary DB)
+- Redis (caching + queues)
+- S3 (file storage)
+- Dockerized services
+- Weekly backups
+
+## Performance Goals
+
+- High availability
+- Low latency

@@ -1,0 +1,41 @@
+---
+alwaysApply: false
+---
+
+# Backend Cursor Configuration
+
+This project is a WhatsApp Business SaaS backend system.
+
+## Context
+
+- Multi-company system
+- Role-based system:
+  - super-admin
+  - admin
+  - agent
+- Customers belong to a company
+- System handles messaging, campaigns, chats, templates, workflows
+
+## Tech Stack
+
+- Node.js + TypeScript + Express
+- BullMQ (message queues)
+- worker_threads (if required)
+- PostgreSQL, Redis
+- S3 for storage
+- WebSockets for real-time chat
+
+## Rule Loading
+
+Follow strictly:
+
+- rules/instructions.mdc
+- rules/system-design.mdc
+- rules/features.mdc
+- rules/folder-structure.mdc
+
+## Expectations
+
+- Code must be modular, readable, scalable
+- Follow system design principles strictly
+- Optimize for low latency and high availability
