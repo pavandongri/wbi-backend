@@ -1,0 +1,40 @@
+---
+alwaysApply: false
+---
+
+# Backend Folder Structure
+
+src/
+
+├── server.ts
+├── app.ts
+
+├── routes/
+├── controllers/
+├── services/
+├── middleware/
+├── validations/
+├── utils/
+├── constants/
+├── config/
+
+├── jobs/
+│ ├── queues/
+│ ├── workers/
+
+├── websockets/
+
+├── types/
+└── docs/
+
+## Rules
+
+- routes → define endpoints
+- controllers → handle req/res only
+- services → business logic
+- middleware → auth, roles, errors
+- validations → schema validation
+- jobs → background processing
+- websockets → real-time chat
+
+- Keep strict separation of concerns

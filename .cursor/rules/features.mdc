@@ -1,0 +1,89 @@
+---
+alwaysApply: false
+---
+
+# Backend Features
+
+## Super Admin Features
+
+### Dashboard
+
+- Company stats
+- Message stats
+- Template stats
+- Campaign stats
+- Revenue stats
+- Customer stats
+- Company health score
+
+### Subscription
+
+- CRUD (basic, pro, enterprise, coupons)
+
+### Companies
+
+- CRUD
+- Assign admins
+
+---
+
+## Admin Features
+
+### Reports
+
+- Subscription details
+- Message stats
+- Customer stats
+- Campaign performance
+- Template performance
+- Agent stats
+
+### Agents
+
+- CRUD (edit, soft-delete, hard-delete)
+- Chats, campaigns, reports
+- Filters and pagination
+
+### Billing
+
+- Subscription history
+- Payment history
+
+---
+
+## Agent Features
+
+### Groups
+
+- CRUD
+- Filters
+- Pagination
+
+### Customers
+
+- CRUD
+- Bulk upload
+- Filters
+- Pagination
+
+### Templates
+
+- CRUD
+- Filters
+- Pagination
+
+### Chats
+
+- User list
+- Conversations
+- Media support (text, image, document, templates)
+- Infinite scroll
+- Customer details panel
+
+### Campaigns
+
+- CRUD
+
+### Workflows
+
+- CRUD
