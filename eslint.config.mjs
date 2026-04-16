@@ -21,7 +21,9 @@ export default defineConfig([
       },
 
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: ["drizzle.config.ts"]
+        },
         tsconfigRootDir: import.meta.dirname
       },
 
