@@ -16,7 +16,7 @@
     "push": "drizzle-kit push",
     "generate": "read -p 'Enter migration name: ' name && drizzle-kit generate --name \"$name\"",
     "migrate": "drizzle-kit migrate",
-    "seed": "ts-node src/db/seeds/index.ts",
+    "seed": "tsx src/db/seeders/index.ts",
     "studio": "drizzle-kit studio"
   },
   "keywords": [],

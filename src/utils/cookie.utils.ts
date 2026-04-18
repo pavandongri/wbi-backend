@@ -5,6 +5,7 @@ import { env } from "config/env";
 import { CONSTANTS } from "constants/common.constants";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
+import type { AuthUserDetails } from "types/common.types";
 import { ApiError } from "utils/api-error.utils";
 
 export type AuthCookiePayload = {
@@ -12,6 +13,7 @@ export type AuthCookiePayload = {
   companyId: string;
   role: string;
   exp: number; // epoch seconds
+  userDetails?: AuthUserDetails;
 };
 
 const base64UrlEncode = (input: Buffer | string): string => {
@@ -105,6 +107,21 @@ export const verifyAuthCookie = (token: string): AuthCookiePayload => {
 
   if (!payload.userId || !payload.companyId || !payload.role) {
     throw new ApiError(HTTP_STATUS.UNAUTHORIZED, HTTP_MESSAGES.ERROR.INVALID_TOKEN);
+  }
+
+  if (payload.userDetails !== undefined) {
+    const ud = payload.userDetails;
+    if (ud === null || typeof ud !== "object" || Array.isArray(ud)) {
+      throw new ApiError(HTTP_STATUS.UNAUTHORIZED, HTTP_MESSAGES.ERROR.INVALID_TOKEN);
+    }
+    const rec = ud as Record<string, unknown>;
+    const nameOk = typeof rec.name === "string" && rec.name.trim().length > 0;
+    const emailOk = typeof rec.email === "string" && rec.email.trim().length > 0;
+    const phone = rec.phone;
+    const phoneOk = phone === null || phone === undefined || typeof phone === "string";
+    if (!nameOk || !emailOk || !phoneOk) {
+      throw new ApiError(HTTP_STATUS.UNAUTHORIZED, HTTP_MESSAGES.ERROR.INVALID_TOKEN);
+    }
   }
 
   return payload;

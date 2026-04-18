@@ -26,7 +26,7 @@ export const signup = async (req: Request, res: Response): Promise<Response> => 
       ? companyEmail.trim()
       : undefined;
 
-  const { userId, companyId, role } = await authService.signup({
+  const { userId, companyId, role, userDetails } = await authService.signup({
     companyName: companyName.trim(),
     companyPhone: companyPhone.trim(),
     companyEmail: companyEmailTrimmed,
@@ -36,12 +36,12 @@ export const signup = async (req: Request, res: Response): Promise<Response> => 
   });
 
   const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60; // 7 days
-  const token = signAuthCookie({ userId, companyId, role, exp });
+  const token = signAuthCookie({ userId, companyId, role, exp, userDetails });
 
   setAuthCookie(res, token);
 
   return apiSuccessResponse(req, res, {
-    data: { userId, companyId, role },
+    data: { userId, companyId, role, userDetails },
     message: HTTP_MESSAGES.SUCCESS.SIGNUP_SUCCESS,
     statusCode: HTTP_STATUS.CREATED
   });
@@ -54,15 +54,18 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
   }
 
-  const { userId, companyId, role } = await authService.login({ email: email.trim(), password });
+  const { userId, companyId, role, userDetails } = await authService.login({
+    email: email.trim(),
+    password
+  });
 
   const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
-  const token = signAuthCookie({ userId, companyId, role, exp });
+  const token = signAuthCookie({ userId, companyId, role, exp, userDetails });
 
   setAuthCookie(res, token);
 
   return apiSuccessResponse(req, res, {
-    data: { userId, companyId, role },
+    data: { userId, companyId, role, userDetails },
     message: HTTP_MESSAGES.SUCCESS.LOGIN_SUCCESS,
     statusCode: HTTP_STATUS.OK
   });

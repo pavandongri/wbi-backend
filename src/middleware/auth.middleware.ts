@@ -26,7 +26,10 @@ export const requireAuth = async (
       .select({
         id: users.id,
         companyId: users.companyId,
-        role: users.role
+        role: users.role,
+        name: users.name,
+        email: users.email,
+        phone: users.phone
       })
       .from(users)
       .where(and(eq(users.id, cookiePayload.userId), eq(users.status, "active")))
@@ -53,7 +56,12 @@ export const requireAuth = async (
   req.auth = {
     userId: user.id,
     companyId: user.companyId,
-    role: user.role
+    role: user.role,
+    userDetails: {
+      name: user.name,
+      email: user.email,
+      phone: user.phone ?? null
+    }
   };
 
   next();

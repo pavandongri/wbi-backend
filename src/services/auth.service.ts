@@ -14,13 +14,16 @@ export const login = async (
   userId: string;
   companyId: string;
   role: string;
+  userDetails: { name: string; email: string; phone: string | null };
 }> => {
   const userRows = await db
     .select({
       id: users.id,
       companyId: users.companyId,
       role: users.role,
+      name: users.name,
       email: users.email,
+      phone: users.phone,
       password: users.password
     })
     .from(users)
@@ -49,7 +52,12 @@ export const login = async (
   return {
     userId: user.id,
     companyId: user.companyId,
-    role: userRows[0].role
+    role: user.role,
+    userDetails: {
+      name: user.name,
+      email: user.email,
+      phone: user.phone ?? null
+    }
   };
 };
 
@@ -59,6 +67,7 @@ export const signup = async (
   userId: string;
   companyId: string;
   role: string;
+  userDetails: { name: string; email: string; phone: string | null };
 }> => {
   const userId = randomUUID();
 
@@ -97,7 +106,10 @@ export const signup = async (
         .returning({
           id: users.id,
           companyId: users.companyId,
-          role: users.role
+          role: users.role,
+          name: users.name,
+          email: users.email,
+          phone: users.phone
         });
 
       const created = userRows[0];
@@ -111,7 +123,12 @@ export const signup = async (
       return {
         userId: created.id,
         companyId: created.companyId,
-        role: created.role
+        role: created.role,
+        userDetails: {
+          name: created.name,
+          email: created.email,
+          phone: created.phone ?? null
+        }
       };
     });
   } catch (err) {

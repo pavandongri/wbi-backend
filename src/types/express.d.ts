@@ -5,6 +5,11 @@ declare module "express-serve-static-core" {
     userId: string;
     companyId: string;
     role: string;
+    userDetails: {
+      name: string;
+      email: string;
+      phone: string | null;
+    };
   }
 
   interface Request {
