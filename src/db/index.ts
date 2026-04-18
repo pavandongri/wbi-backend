@@ -16,6 +16,9 @@ export async function checkDbConnection(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("SELECT 1 as ok");
+    await client.query(
+      "SELECT id, name, email, phone, role, status FROM users ORDER BY created_at ASC LIMIT 50"
+    );
   } finally {
     client.release();
   }
