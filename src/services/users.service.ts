@@ -8,7 +8,13 @@ import { companies, users } from "db/schema";
 import { AuthContext } from "types/common.types";
 import { CreateUserPayload, UpdateUserPayload, User } from "types/users.types";
 import { ApiError } from "utils/api-error.utils";
-import { assertCompanyScope, handleUniqueViolation, isSuperAdmin } from "utils/helpers";
+import {
+  assertCompanyScope,
+  getMissingFields,
+  handleUniqueViolation,
+  isAdminOrHigher,
+  isSuperAdmin
+} from "utils/helpers";
 import { assertUuidParam, buildListResponse, parseQ, parseSort } from "utils/list.utils";
 import { parsePagination } from "utils/pagination.utils";
 
@@ -27,40 +33,35 @@ const mapSortByToColumn = (sortBy: string) => {
   return sortMap[sortBy] ?? users.createdAt;
 };
 
+// used to create super-admin , admin
 export const createUser = async (payload: CreateUserPayload, auth: AuthContext): Promise<User> => {
-  if (
-    !payload?.companyId ||
-    !payload?.name ||
-    !payload?.email ||
-    !payload?.password ||
-    !payload?.role
-  ) {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+  if (!isAdminOrHigher(auth.role)) {
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.UNAUTHORIZED);
   }
 
-  assertCompanyScope(auth, payload.companyId);
+  const missingInput = getMissingFields(payload, ["name", "role", "email", "password"]);
 
-  if (!isSuperAdmin(auth.role) && isSuperAdmin(payload.role)) {
-    throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.FORBIDDEN);
+  if (missingInput) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, `${missingInput} is required`);
   }
 
   const companyRows = await db
     .select({ id: companies.id })
     .from(companies)
-    .where(and(eq(companies.id, payload.companyId), eq(companies.status, "active")))
+    .where(and(eq(companies.id, auth.companyId), eq(companies.status, "active")))
     .limit(1);
 
   if (!companyRows[0]) {
-    throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.INVALID_COMPANY_ID);
   }
 
   const insertValues = {
-    companyId: payload.companyId,
+    companyId: auth.companyId,
     name: payload.name,
+    role: payload.role,
     email: payload.email,
     password: payload.password,
     phone: payload.phone,
-    role: payload.role,
     status: "active" as const,
     createdBy: auth.userId
   };
@@ -124,7 +125,7 @@ export const listUsers = async (
     if (!validUserRoles.has(roleFilter as (typeof ROLES)[keyof typeof ROLES])) {
       throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
     }
-    const roleValue = roleFilter as "super_admin" | "admin" | "agent";
+    const roleValue = roleFilter as "super_admin" | "admin" | "staff";
     baseConditions.push(eq(users.role, roleValue));
   }
 

@@ -14,7 +14,9 @@ export const HTTP_MESSAGES = {
     VALIDATION_FAILED: "Validation failed",
     DUPLICATE_RESOURCE: "Resource already exists",
 
-    SERVICE_UNAVAILABLE: "Service temporarily unavailable"
+    SERVICE_UNAVAILABLE: "Service temporarily unavailable",
+
+    INVALID_COMPANY_ID: "Invalid companyId"
   },
 
   SUCCESS: {

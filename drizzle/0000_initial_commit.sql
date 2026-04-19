@@ -1,7 +1,7 @@
 CREATE TYPE "public"."campaign_status" AS ENUM('draft', 'scheduled', 'running', 'completed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."group_status" AS ENUM('active', 'inactive', 'deleted');--> statement-breakpoint
 CREATE TYPE "public"."message_status" AS ENUM('pending', 'sent', 'delivered', 'read', 'failed');--> statement-breakpoint
-CREATE TYPE "public"."role" AS ENUM('super_admin', 'admin', 'agent');--> statement-breakpoint
+CREATE TYPE "public"."role" AS ENUM('super_admin', 'admin', 'staff');--> statement-breakpoint
 CREATE TABLE "companies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
@@ -106,4 +106,5 @@ CREATE INDEX "customers_is_active_idx" ON "customers" USING btree ("is_active");
 CREATE INDEX "groups_company_id_idx" ON "groups" USING btree ("company_id");--> statement-breakpoint
 CREATE INDEX "groups_status_idx" ON "groups" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "users_company_id_idx" ON "users" USING btree ("company_id");--> statement-breakpoint
-CREATE INDEX "users_status_idx" ON "users" USING btree ("status");
+CREATE INDEX "users_status_idx" ON "users" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "users_email_idx" ON "users" USING btree ("email");

@@ -11,7 +11,7 @@ import {
   uuid
 } from "drizzle-orm/pg-core";
 
-export const roleEnum = pgEnum("role", ["super_admin", "admin", "agent"]);
+export const roleEnum = pgEnum("role", ["super_admin", "admin", "staff"]);
 
 export const messageStatusEnum = pgEnum("message_status", [
   "pending",
@@ -74,7 +74,8 @@ export const users = pgTable(
   },
   (table) => [
     index("users_company_id_idx").on(table.companyId),
-    index("users_status_idx").on(table.status)
+    index("users_status_idx").on(table.status),
+    index("users_email_idx").on(table.email)
   ]
 );
 

@@ -1,5 +1,5 @@
 {
-  "id": "5e076958-a459-41a1-b69b-da40404dc0d1",
+  "id": "dc4a3f17-bb75-46b6-b635-00e1eeab4e54",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -735,6 +735,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "users_email_idx": {
+          "name": "users_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -798,7 +813,7 @@
     "public.role": {
       "name": "role",
       "schema": "public",
-      "values": ["super_admin", "admin", "agent"]
+      "values": ["super_admin", "admin", "staff"]
     }
   },
   "schemas": {},

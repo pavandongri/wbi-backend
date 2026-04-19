@@ -55,9 +55,18 @@ export const isSuperAdmin = (role: string): boolean => role === ROLES.SUPER_ADMI
 
 export const isAdmin = (role: string): boolean => role === ROLES.ADMIN;
 
-export const isAgent = (role: string): boolean => role === ROLES.AGENT;
+export const isStaff = (role: string): boolean => role === ROLES.STAFF;
 
 export const isAdminOrHigher = (role: string): boolean => isSuperAdmin(role) || isAdmin(role);
 
-export const isAgentOrHigher = (role: string): boolean =>
-  isSuperAdmin(role) || isAdmin(role) || isAgent(role);
+export const isStaffOrHigher = (role: string): boolean =>
+  isSuperAdmin(role) || isAdmin(role) || isStaff(role);
+
+export function getValue(obj: any, path: string): boolean {
+  const found = path.split(".").reduce((acc, key) => acc?.[key], obj);
+  return found !== undefined && found !== null;
+}
+
+export function getMissingFields(payload: any, fields: string[]) {
+  return fields.filter((field) => getValue(payload, field) == null);
+}
