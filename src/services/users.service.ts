@@ -39,10 +39,10 @@ export const createUser = async (payload: CreateUserPayload, auth: AuthContext):
     throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.UNAUTHORIZED);
   }
 
-  const missingInput = getMissingFields(payload, ["name", "role", "email", "password"]);
+  const missingInputs = getMissingFields(payload, ["name", "role", "email", "password"]);
 
-  if (missingInput) {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, `${missingInput} is required`);
+  if (missingInputs.length > 0) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, `missing [${missingInputs.join(", ")}]`);
   }
 
   const companyRows = await db

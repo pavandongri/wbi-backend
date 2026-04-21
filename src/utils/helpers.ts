@@ -64,9 +64,13 @@ export const isStaffOrHigher = (role: string): boolean =>
 
 export function getValue(obj: any, path: string): boolean {
   const found = path.split(".").reduce((acc, key) => acc?.[key], obj);
-  return found !== undefined && found !== null;
+  return found !== undefined && found !== null && found !== "";
 }
 
-export function getMissingFields(payload: any, fields: string[]) {
-  return fields.filter((field) => getValue(payload, field) == null);
+export function getMissingFields(payload: any, fields: string[]): string[] {
+  return fields.filter((field) => !getValue(payload, field)).map((field) => `${field} is required`);
 }
+
+export const sleeper = {
+  sleep: (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+};

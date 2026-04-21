@@ -10,7 +10,9 @@ export const createCustomerGroupMapping = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const created = await mappingsService.createCustomerGroupMapping(req.body, req.auth!);
+  const created = Array.isArray(req.body)
+    ? await mappingsService.createCustomerGroupMappings(req.body, req.auth!)
+    : await mappingsService.createCustomerGroupMapping(req.body, req.auth!);
   return apiSuccessResponse(req, res, {
     data: created,
     message: HTTP_MESSAGES.SUCCESS.CREATED,
