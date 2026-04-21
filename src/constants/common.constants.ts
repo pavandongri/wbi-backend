@@ -9,5 +9,5 @@ export const CONSTANTS = {
 export const ROLES = {
   SUPER_ADMIN: "super_admin",
   ADMIN: "admin",
-  AGENT: "agent"
+  STAFF: "staff"
 } as const;

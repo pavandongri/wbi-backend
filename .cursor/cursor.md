@@ -8,7 +8,7 @@ This project is a WhatsApp Business SaaS backend system.
 - Role-based system:
   - super-admin
   - admin
-  - agent
+  - staff
 - Customers belong to a company
 - System handles messaging, campaigns, chats, templates, workflows
 

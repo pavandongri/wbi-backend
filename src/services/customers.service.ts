@@ -13,9 +13,9 @@ import {
 } from "types/customers.types";
 import { ApiError } from "utils/api-error.utils";
 import {
-  assertCompanyScope,
   ensureCustomerMappedToCompany,
   handleUniqueViolation,
+  isAdmin,
   isSuperAdmin
 } from "utils/helpers";
 import { assertUuidParam, buildListResponse, parseQ, parseSort } from "utils/list.utils";
@@ -37,16 +37,18 @@ export const createCustomer = async (
   payload: CreateCustomerPayload,
   auth: AuthContext
 ): Promise<Customer> => {
-  if (!payload?.companyId || !payload?.name || !payload?.phone) {
+  if (!payload?.name || !payload?.phone) {
     throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
   }
 
-  assertCompanyScope(auth, payload.companyId);
+  if (!isAdmin(auth.role)) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, `Only admin can create customer`);
+  }
 
   const companyRows = await db
     .select({ id: companies.id })
     .from(companies)
-    .where(and(eq(companies.id, payload.companyId), eq(companies.status, "active")))
+    .where(and(eq(companies.id, auth.companyId), eq(companies.status, "active")))
     .limit(1);
 
   if (!companyRows[0]) {
@@ -54,6 +56,7 @@ export const createCustomer = async (
   }
 
   const customerInsert = {
+    companyId: auth.companyId,
     name: payload.name,
     phone: payload.phone,
     email: payload.email,
@@ -80,7 +83,7 @@ export const createCustomer = async (
       .insert(customerCompanyMappings)
       .values({
         customerId: createdCustomer.id,
-        companyId: payload.companyId
+        companyId: auth.companyId
       })
       .returning()
       .then(() => undefined);

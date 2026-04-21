@@ -8,7 +8,7 @@ export type CreateUserPayload = {
   email: string;
   password: string;
   phone?: string;
-  role: "super_admin" | "admin" | "agent";
+  role: "super_admin" | "admin" | "staff";
 };
 
 export type UpdateUserPayload = Partial<Omit<CreateUserPayload, "companyId">> & {

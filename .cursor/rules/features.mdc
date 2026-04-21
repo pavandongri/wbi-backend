@@ -36,9 +36,9 @@ alwaysApply: false
 - Customer stats
 - Campaign performance
 - Template performance
-- Agent stats
+- Staff stats
 
-### Agents
+### Staff
 
 - CRUD (edit, soft-delete, hard-delete)
 - Chats, campaigns, reports
@@ -51,7 +51,7 @@ alwaysApply: false
 
 ---
 
-## Agent Features
+## Staff Features
 
 ### Groups
 

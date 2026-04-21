@@ -19,7 +19,7 @@ export const customerSelect = {
 } as const;
 
 export type CreateCustomerPayload = {
-  companyId: string;
+  companyId?: string;
   name: string;
   phone: string;
   email?: string;

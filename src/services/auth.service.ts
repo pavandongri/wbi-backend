@@ -46,7 +46,7 @@ export const login = async (
 
   const company = companyRows[0];
   if (!company) {
-    throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.FORBIDDEN);
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.INVALID_COMPANY_ID);
   }
 
   return {

@@ -8,7 +8,7 @@ alwaysApply: false
 
 - super-admin
 - admin
-- agent
+- staff
 
 ## Role Capabilities
 
@@ -28,7 +28,7 @@ alwaysApply: false
 - Runs campaigns
 - Views company dashboard and reports
 
-### agent
+### staff
 
 - Sends messages
 - Runs campaigns
@@ -40,7 +40,7 @@ alwaysApply: false
 ## Core Domains
 
 - companies
-- users (admins, agents)
+- users (admins, staff)
 - customers
 - groups
 - templates

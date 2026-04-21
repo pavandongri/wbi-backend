@@ -51,15 +51,6 @@ export const createCustomerGroupMapping = async (
   const groupCompanyId = groupRows[0].companyId;
   assertCompanyScope(auth, groupCompanyId);
 
-  const companyRows = await db
-    .select({ id: companies.id })
-    .from(companies)
-    .where(and(eq(companies.id, groupCompanyId), eq(companies.status, "active")))
-    .limit(1);
-  if (!companyRows[0]) {
-    throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
-  }
-
   const customerRows = await db
     .select({ id: customers.id })
     .from(customers)
@@ -92,6 +83,17 @@ export const createCustomerGroupMapping = async (
   } catch (err) {
     return handleUniqueViolation(err);
   }
+};
+
+export const createCustomerGroupMappings = async (
+  payloads: CreateCustomerGroupMappingPayload[],
+  auth: AuthContext
+): Promise<customerGroupMapping[]> => {
+  if (!Array.isArray(payloads) || payloads.length === 0) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+  }
+
+  return Promise.all(payloads.map((payload) => createCustomerGroupMapping(payload, auth)));
 };
 
 export const getCustomerGroupMappingById = async (
