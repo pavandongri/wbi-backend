@@ -15,7 +15,19 @@ export const handleUniqueViolation = (err: unknown): never => {
   if (code === "23505") {
     throw new ApiError(409, HTTP_MESSAGES.ERROR.DUPLICATE_RESOURCE);
   }
-  throw err;
+  throw new ApiError(HTTP_STATUS.INTERNAL_SERVER_ERROR, getErrorMessage(err));
+};
+
+export const getErrorMessage = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    return error.message ?? "Unknown API error";
+  }
+
+  if (error instanceof Error) {
+    return error.message ?? "Unknown error";
+  }
+
+  return "Unknown error";
 };
 
 export const getIdParam = (value: string | string[] | undefined): string => {

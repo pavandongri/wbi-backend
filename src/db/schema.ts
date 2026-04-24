@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -14,12 +15,33 @@ import {
 export const roleEnum = pgEnum("role", ["super_admin", "admin", "staff"]);
 
 export const messageStatusEnum = pgEnum("message_status", [
-  "pending",
+  "created",
+  "queued",
   "sent",
   "delivered",
   "read",
   "failed"
 ]);
+
+export const templateCategoryEnum = pgEnum("template_category", ["marketing", "utility"]);
+
+export const templateHeaderTypeEnum = pgEnum("template_header_type", [
+  "text",
+  "image",
+  "video",
+  "document",
+  "location",
+  "none"
+]);
+
+export const templateStatusEnum = pgEnum("template_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "deleted"
+]);
+
+export const messageDirectionEnum = pgEnum("message_direction", ["inbound", "outbound"]);
 
 export const campaignStatusEnum = pgEnum("campaign_status", [
   "draft",
@@ -158,5 +180,84 @@ export const customerGroupMappings = pgTable(
     uniqueIndex("customer_group_unique").on(table.customerId, table.groupId),
     index("customer_group_customer_id_idx").on(table.customerId),
     index("customer_group_group_id_idx").on(table.groupId)
+  ]
+);
+
+export const templates = pgTable(
+  "templates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    language: text("language").notNull(),
+    category: templateCategoryEnum("category").notNull(),
+    headerType: templateHeaderTypeEnum("header_type").notNull(),
+    headerText: text("header_text"),
+    headerMediaUrl: text("header_media_url"),
+    headerMediaHandler: text("header_media_handler"),
+    headerExample: jsonb("header_example").$type<string[]>(),
+    body: text("body").notNull(),
+    bodyExample: jsonb("body_example").$type<string[][]>(),
+    footer: text("footer"),
+    buttons: jsonb("buttons").$type<
+      {
+        type: "quick_reply" | "url" | "phone_number";
+        text: string;
+        url?: string;
+        url_type?: "static" | "dynamic";
+        phone_number?: string;
+        example?: string[];
+      }[]
+    >(),
+    status: templateStatusEnum("status").default("pending").notNull(),
+    rejectionMessage: text("rejection_message"),
+    companyId: uuid("company_id")
+      .references(() => companies.id)
+      .notNull(),
+    userId: uuid("user_id")
+      .references(() => users.id)
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    deletedBy: uuid("deleted_by").references((): AnyPgColumn => users.id),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedAtMeta: boolean("deleted_at_meta").default(false).notNull()
+  },
+  (table) => [
+    index("templates_company_id_idx").on(table.companyId),
+    index("templates_status_idx").on(table.status),
+    index("templates_created_by_idx").on(table.userId)
+  ]
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    from: text("from").notNull(),
+    to: text("to").notNull(),
+    body: text("body"),
+    templateId: uuid("template_id").references(() => templates.id, { onDelete: "set null" }),
+    templateHeaderParams: text("template_header_params"),
+    templateBodyParams: jsonb("template_body_params").$type<string[]>(),
+    status: messageStatusEnum("status").default("queued").notNull(),
+    direction: messageDirectionEnum("direction").notNull(),
+    failedReason: text("failed_reason"),
+    companyId: uuid("company_id")
+      .references(() => companies.id)
+      .notNull(),
+    userId: uuid("user_id").references(() => users.id),
+    cost: real("cost").default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    readAt: timestamp("read_at", { withTimezone: true })
+  },
+  (table) => [
+    index("messages_company_id_idx").on(table.companyId),
+    index("messages_user_id_idx").on(table.userId),
+    index("messages_template_id_idx").on(table.templateId),
+    index("messages_status_idx").on(table.status),
+    index("messages_direction_idx").on(table.direction),
+    index("messages_created_at_idx").on(table.createdAt)
   ]
 );

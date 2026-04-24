@@ -69,6 +69,19 @@ export const createCustomer = async (
     isActive: true
   };
 
+  const [existingCustomer] = await db
+    .select()
+    .from(customers)
+    .where(and(eq(customers.phone, payload.phone), eq(customers.isActive, true)))
+    .limit(1);
+
+  if (existingCustomer) {
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      `Customer with phone ${payload.phone} already exists`
+    );
+  }
+
   try {
     const customerRows = await db.insert(customers).values(customerInsert).returning();
     const createdCustomer = customerRows[0];
@@ -238,6 +251,21 @@ export const updateCustomer = async (
   if (payload.zipcode !== undefined) updateValues.zipcode = payload.zipcode;
   if (payload.address !== undefined) updateValues.address = payload.address;
   if (payload.tags !== undefined) updateValues.tags = payload.tags;
+
+  if (payload.phone !== undefined) {
+    const [existingCustomer] = await db
+      .select()
+      .from(customers)
+      .where(and(eq(customers.phone, payload.phone), eq(customers.isActive, true)))
+      .limit(1);
+
+    if (existingCustomer) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        `Customer with phone ${payload.phone} already exists`
+      );
+    }
+  }
 
   try {
     const rows = await db.update(customers).set(updateValues).where(whereCond).returning();

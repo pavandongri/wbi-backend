@@ -1,7 +1,11 @@
 CREATE TYPE "public"."campaign_status" AS ENUM('draft', 'scheduled', 'running', 'completed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."group_status" AS ENUM('active', 'inactive', 'deleted');--> statement-breakpoint
-CREATE TYPE "public"."message_status" AS ENUM('pending', 'sent', 'delivered', 'read', 'failed');--> statement-breakpoint
+CREATE TYPE "public"."message_direction" AS ENUM('inbound', 'outbound');--> statement-breakpoint
+CREATE TYPE "public"."message_status" AS ENUM('created', 'queued', 'sent', 'delivered', 'read', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('super_admin', 'admin', 'staff');--> statement-breakpoint
+CREATE TYPE "public"."template_category" AS ENUM('marketing', 'utility');--> statement-breakpoint
+CREATE TYPE "public"."template_header_type" AS ENUM('text', 'image', 'video', 'document', 'location', 'none');--> statement-breakpoint
+CREATE TYPE "public"."template_status" AS ENUM('pending', 'approved', 'rejected', 'deleted');--> statement-breakpoint
 CREATE TABLE "companies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
@@ -65,6 +69,51 @@ CREATE TABLE "groups" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "messages" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"from" text NOT NULL,
+	"to" text NOT NULL,
+	"body" text,
+	"template_id" uuid,
+	"template_header_params" text,
+	"template_body_params" jsonb,
+	"status" "message_status" DEFAULT 'queued' NOT NULL,
+	"direction" "message_direction" NOT NULL,
+	"failed_reason" text,
+	"company_id" uuid NOT NULL,
+	"user_id" uuid,
+	"cost" real DEFAULT 0,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"sent_at" timestamp with time zone,
+	"delivered_at" timestamp with time zone,
+	"read_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "templates" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"language" text NOT NULL,
+	"category" "template_category" NOT NULL,
+	"header_type" "template_header_type" NOT NULL,
+	"header_text" text,
+	"header_media_url" text,
+	"header_media_handler" text,
+	"header_example" jsonb,
+	"body" text NOT NULL,
+	"body_example" jsonb,
+	"footer" text,
+	"buttons" jsonb,
+	"status" "template_status" DEFAULT 'pending' NOT NULL,
+	"rejection_message" text,
+	"company_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_by" uuid,
+	"deleted_at" timestamp with time zone,
+	"deleted_at_meta" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
@@ -93,6 +142,12 @@ ALTER TABLE "customer_group_mappings" ADD CONSTRAINT "customer_group_mappings_gr
 ALTER TABLE "groups" ADD CONSTRAINT "groups_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "groups" ADD CONSTRAINT "groups_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "groups" ADD CONSTRAINT "groups_deleted_by_users_id_fk" FOREIGN KEY ("deleted_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_template_id_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."templates"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "templates" ADD CONSTRAINT "templates_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "templates" ADD CONSTRAINT "templates_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "templates" ADD CONSTRAINT "templates_deleted_by_users_id_fk" FOREIGN KEY ("deleted_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_deleted_by_users_id_fk" FOREIGN KEY ("deleted_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -105,6 +160,15 @@ CREATE INDEX "customer_group_group_id_idx" ON "customer_group_mappings" USING bt
 CREATE INDEX "customers_is_active_idx" ON "customers" USING btree ("is_active");--> statement-breakpoint
 CREATE INDEX "groups_company_id_idx" ON "groups" USING btree ("company_id");--> statement-breakpoint
 CREATE INDEX "groups_status_idx" ON "groups" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "messages_company_id_idx" ON "messages" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "messages_user_id_idx" ON "messages" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "messages_template_id_idx" ON "messages" USING btree ("template_id");--> statement-breakpoint
+CREATE INDEX "messages_status_idx" ON "messages" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "messages_direction_idx" ON "messages" USING btree ("direction");--> statement-breakpoint
+CREATE INDEX "messages_created_at_idx" ON "messages" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "templates_company_id_idx" ON "templates" USING btree ("company_id");--> statement-breakpoint
+CREATE INDEX "templates_status_idx" ON "templates" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "templates_created_by_idx" ON "templates" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "users_company_id_idx" ON "users" USING btree ("company_id");--> statement-breakpoint
 CREATE INDEX "users_status_idx" ON "users" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "users_email_idx" ON "users" USING btree ("email");

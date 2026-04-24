@@ -26,7 +26,13 @@ export const signup = async (req: Request, res: Response): Promise<Response> => 
       ? companyEmail.trim()
       : undefined;
 
-  const { userId, companyId, role, userDetails } = await authService.signup({
+  const {
+    userId,
+    companyId,
+    companyPhone: registeredCompanyPhone,
+    role,
+    userDetails
+  } = await authService.signup({
     companyName: companyName.trim(),
     companyPhone: companyPhone.trim(),
     companyEmail: companyEmailTrimmed,
@@ -41,7 +47,7 @@ export const signup = async (req: Request, res: Response): Promise<Response> => 
   setAuthCookie(res, token);
 
   return apiSuccessResponse(req, res, {
-    data: { userId, companyId, role, userDetails },
+    data: { userId, companyId, companyPhone: registeredCompanyPhone, role, userDetails },
     message: HTTP_MESSAGES.SUCCESS.SIGNUP_SUCCESS,
     statusCode: HTTP_STATUS.CREATED
   });
@@ -54,7 +60,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
   }
 
-  const { userId, companyId, role, userDetails } = await authService.login({
+  const { userId, companyId, companyPhone, role, userDetails } = await authService.login({
     email: email.trim(),
     password
   });
@@ -65,7 +71,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
   setAuthCookie(res, token);
 
   return apiSuccessResponse(req, res, {
-    data: { userId, companyId, role, userDetails },
+    data: { userId, companyId, companyPhone, role, userDetails },
     message: HTTP_MESSAGES.SUCCESS.LOGIN_SUCCESS,
     statusCode: HTTP_STATUS.OK
   });

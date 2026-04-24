@@ -13,6 +13,7 @@ export const login = async (
 ): Promise<{
   userId: string;
   companyId: string;
+  companyPhone: string | null;
   role: string;
   userDetails: { name: string; email: string; phone: string | null };
 }> => {
@@ -38,7 +39,8 @@ export const login = async (
   const companyRows = await db
     .select({
       id: companies.id,
-      status: companies.status
+      status: companies.status,
+      phone: companies.phone
     })
     .from(companies)
     .where(and(eq(companies.id, user.companyId), eq(companies.status, "active")))
@@ -52,6 +54,7 @@ export const login = async (
   return {
     userId: user.id,
     companyId: user.companyId,
+    companyPhone: company?.phone ?? null,
     role: user.role,
     userDetails: {
       name: user.name,
@@ -66,6 +69,7 @@ export const signup = async (
 ): Promise<{
   userId: string;
   companyId: string;
+  companyPhone: string;
   role: string;
   userDetails: { name: string; email: string; phone: string | null };
 }> => {
@@ -81,7 +85,7 @@ export const signup = async (
           status: "active",
           ...(payload.companyEmail ? { email: payload.companyEmail } : {})
         })
-        .returning({ id: companies.id });
+        .returning({ id: companies.id, phone: companies.phone });
 
       const company = companyRows[0];
       if (!company) {
@@ -123,6 +127,7 @@ export const signup = async (
       return {
         userId: created.id,
         companyId: created.companyId,
+        companyPhone: company.phone,
         role: created.role,
         userDetails: {
           name: created.name,
@@ -141,6 +146,7 @@ export const getMe = async (
 ): Promise<{
   userId: string;
   companyId: string;
+  companyPhone: string;
   role: string;
   name: string;
   email: string;
@@ -149,11 +155,13 @@ export const getMe = async (
     .select({
       userId: users.id,
       companyId: users.companyId,
+      companyPhone: companies.phone,
       role: users.role,
       name: users.name,
       email: users.email
     })
     .from(users)
+    .innerJoin(companies, eq(companies.id, users.companyId))
     .where(and(eq(users.id, userId), eq(users.status, "active")))
     .limit(1);
 
