@@ -1,3 +1,4 @@
+import { ROLES } from "constants/common.constants";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db/index";
@@ -6,7 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { LoginPayload, SignupPayload } from "types/auth.types";
 import { ApiError } from "utils/api-error.utils";
-import { handleUniqueViolation } from "utils/helpers";
+import { comparePassword, handleUniqueViolation, hashPassword } from "utils/helpers";
 
 export const login = async (
   payload: LoginPayload
@@ -32,7 +33,10 @@ export const login = async (
     .limit(1);
 
   const user = userRows[0];
-  if (!user || user.password !== payload.password) {
+
+  const isPasswordValid = await comparePassword(payload.password, user.password);
+
+  if (!user || !isPasswordValid) {
     throw new ApiError(HTTP_STATUS.UNAUTHORIZED, HTTP_MESSAGES.ERROR.INVALID_CREDENTIALS);
   }
 
@@ -82,8 +86,16 @@ export const signup = async (
         .values({
           name: payload.companyName,
           phone: payload.companyPhone,
-          status: "active",
-          ...(payload.companyEmail ? { email: payload.companyEmail } : {})
+          email: payload.companyEmail,
+
+          category: payload.category,
+          address: payload.address,
+          city: payload.city,
+          state: payload.state,
+          country: payload.country,
+          zipcode: payload.zipcode,
+
+          status: "active"
         })
         .returning({ id: companies.id, phone: companies.phone });
 
@@ -95,6 +107,8 @@ export const signup = async (
         );
       }
 
+      const passwordHash = await hashPassword(payload.password);
+
       const userRows = await tx
         .insert(users)
         .values({
@@ -102,8 +116,8 @@ export const signup = async (
           companyId: company.id,
           name: payload.name,
           email: payload.email,
-          password: payload.password,
-          role: "admin",
+          password: passwordHash,
+          role: ROLES.ADMIN,
           status: "active",
           createdBy: userId
         })

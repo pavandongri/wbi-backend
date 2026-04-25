@@ -6,25 +6,27 @@ import * as authService from "services/auth.service";
 import { ApiError } from "utils/api-error.utils";
 import { apiSuccessResponse } from "utils/api-response";
 import { clearAuthCookie, setAuthCookie, signAuthCookie } from "utils/cookie.utils";
-import { requireNonEmptyString } from "utils/helpers";
+import { getMissingFields, requireNonEmptyString } from "utils/helpers";
 
 export const signup = async (req: Request, res: Response): Promise<Response> => {
-  const { companyName, companyPhone, companyEmail, name, email, password } = req.body ?? {};
+  const missingFields = getMissingFields(req.body, [
+    "companyName",
+    "companyPhone",
+    "companyEmail",
+    "category",
+    "address",
+    "city",
+    "state",
+    "country",
+    "zipcode",
+    "name",
+    "email",
+    "password"
+  ]);
 
-  if (
-    !requireNonEmptyString(companyName) ||
-    !requireNonEmptyString(companyPhone) ||
-    !requireNonEmptyString(name) ||
-    !requireNonEmptyString(email) ||
-    !requireNonEmptyString(password)
-  ) {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+  if (missingFields?.length) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, `Missing fields : ${missingFields?.join(",")}`);
   }
-
-  const companyEmailTrimmed =
-    typeof companyEmail === "string" && companyEmail.trim().length > 0
-      ? companyEmail.trim()
-      : undefined;
 
   const {
     userId,
@@ -32,14 +34,7 @@ export const signup = async (req: Request, res: Response): Promise<Response> => 
     companyPhone: registeredCompanyPhone,
     role,
     userDetails
-  } = await authService.signup({
-    companyName: companyName.trim(),
-    companyPhone: companyPhone.trim(),
-    companyEmail: companyEmailTrimmed,
-    name: name.trim(),
-    email: email.trim(),
-    password
-  });
+  } = await authService.signup(req.body);
 
   const exp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60; // 7 days
   const token = signAuthCookie({ userId, companyId, role, exp, userDetails });

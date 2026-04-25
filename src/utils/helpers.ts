@@ -1,4 +1,5 @@
-import { ROLES } from "constants/common.constants";
+import bcrypt from "bcrypt";
+import { CONSTANTS, ROLES } from "constants/common.constants";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db";
@@ -85,4 +86,22 @@ export function getMissingFields(payload: any, fields: string[]): string[] {
 
 export const sleeper = {
   sleep: (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+};
+
+export const hashPassword = async (password: string): Promise<string> => {
+  if (!password) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "Password is required");
+  }
+
+  const salt = await bcrypt.genSalt(CONSTANTS.SALT_ROUNDS);
+  const hash = await bcrypt.hash(password, salt);
+
+  return hash;
+};
+
+export const comparePassword = async (
+  password: string,
+  hashedPassword: string
+): Promise<boolean> => {
+  return bcrypt.compare(password, hashedPassword);
 };
