@@ -34,9 +34,13 @@ export const login = async (
 
   const user = userRows[0];
 
+  if (!user) {
+    throw new ApiError(HTTP_STATUS.UNAUTHORIZED, HTTP_MESSAGES.ERROR.INVALID_CREDENTIALS);
+  }
+
   const isPasswordValid = await comparePassword(payload.password, user.password);
 
-  if (!user || !isPasswordValid) {
+  if (!isPasswordValid) {
     throw new ApiError(HTTP_STATUS.UNAUTHORIZED, HTTP_MESSAGES.ERROR.INVALID_CREDENTIALS);
   }
 

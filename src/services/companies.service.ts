@@ -21,11 +21,11 @@ export const createCompany = async (
   auth: AuthContext
 ): Promise<Company> => {
   if (!isSuperAdmin(auth.role)) {
-    throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.FORBIDDEN);
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, "Only super admins can create companies");
   }
 
   if (!payload?.name || !payload?.phone) {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "name and phone are required");
   }
 
   const insertValues = {

@@ -4,14 +4,14 @@ import { ROLES } from "constants/common.constants";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db/index";
-import { companies, users } from "db/schema";
+import { users } from "db/schema";
 import { AuthContext } from "types/common.types";
 import { CreateUserPayload, UpdateUserPayload, User } from "types/users.types";
 import { ApiError } from "utils/api-error.utils";
 import {
-  assertCompanyScope,
   getMissingFields,
   handleUniqueViolation,
+  hashPassword,
   isAdminOrHigher,
   isSuperAdmin
 } from "utils/helpers";
@@ -36,35 +36,39 @@ const mapSortByToColumn = (sortBy: string) => {
 // used to create super-admin , admin
 export const createUser = async (payload: CreateUserPayload, auth: AuthContext): Promise<User> => {
   if (!isAdminOrHigher(auth.role)) {
-    throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.UNAUTHORIZED);
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, "Only admins can create users");
   }
 
-  const missingInputs = getMissingFields(payload, ["name", "role", "email", "password"]);
+  const missingInputs = getMissingFields(payload, ["name", "role", "email", "phone", "password"]);
 
   if (missingInputs.length > 0) {
     throw new ApiError(HTTP_STATUS.BAD_REQUEST, `missing [${missingInputs.join(", ")}]`);
   }
 
-  const companyRows = await db
-    .select({ id: companies.id })
-    .from(companies)
-    .where(and(eq(companies.id, auth.companyId), eq(companies.status, "active")))
-    .limit(1);
-
-  if (!companyRows[0]) {
-    throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.INVALID_COMPANY_ID);
-  }
+  const passwordHash = await hashPassword(payload.password);
 
   const insertValues = {
     companyId: auth.companyId,
     name: payload.name,
     role: payload.role,
     email: payload.email,
-    password: payload.password,
-    phone: payload.phone,
+    password: passwordHash,
+    phone: payload.phone ?? "",
     status: "active" as const,
     createdBy: auth.userId
   };
+
+  const existing = await db.query.users.findFirst({
+    where: (u, { or, eq }) => or(eq(u.email, payload.email), eq(u.phone, payload.phone ?? ""))
+  });
+
+  if (existing && existing.email === payload.email) {
+    throw new ApiError(HTTP_STATUS.CONFLICT, "Email already in use");
+  }
+
+  if (existing && existing.phone === payload.phone) {
+    throw new ApiError(HTTP_STATUS.CONFLICT, "Phone number already in use");
+  }
 
   try {
     const rows = await db.insert(users).values(insertValues).returning();
@@ -123,7 +127,10 @@ export const listUsers = async (
 
   if (roleFilter.length > 0) {
     if (!validUserRoles.has(roleFilter as (typeof ROLES)[keyof typeof ROLES])) {
-      throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        `Invalid role filter, must be one of: ${Object.values(ROLES).join(", ")}`
+      );
     }
     const roleValue = roleFilter as "super_admin" | "admin" | "staff";
     baseConditions.push(eq(users.role, roleValue));
@@ -161,16 +168,11 @@ export const updateUser = async (
 ): Promise<User> => {
   assertUuidParam(id);
 
-  if (payload.companyId !== undefined) {
-    assertCompanyScope(auth, payload.companyId);
-    // Keep companyId immutable for non-super_admin; simplest rule.
-    if (!isSuperAdmin(auth.role)) {
-      throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.FORBIDDEN);
-    }
-  }
-
   if (payload.status && payload.status !== "active") {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      "User status cannot be set to inactive via this endpoint"
+    );
   }
 
   const conditions: any[] = [eq(users.id, id), eq(users.status, "active")];
@@ -185,24 +187,59 @@ export const updateUser = async (
   if (payload.name !== undefined) updateValues.name = payload.name;
   if (payload.email !== undefined) updateValues.email = payload.email;
   if (payload.phone !== undefined) updateValues.phone = payload.phone;
+
   if (payload.role !== undefined) {
     if (!validUserRoles.has(payload.role)) {
-      throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        `Invalid role, must be one of: ${Object.values(ROLES).join(", ")}`
+      );
     }
+
     if (!isSuperAdmin(auth.role) && isSuperAdmin(payload.role)) {
-      throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.FORBIDDEN);
+      throw new ApiError(
+        HTTP_STATUS.FORBIDDEN,
+        "Only super admins can assign the super_admin role"
+      );
     }
+
     updateValues.role = payload.role;
   }
 
-  if (payload.password !== undefined) updateValues.password = payload.password;
+  if (payload.password !== undefined) {
+    updateValues.password = await hashPassword(payload.password);
+  }
+
+  // ✅ Uniqueness check ONLY for fields being updated
+  if (payload.email !== undefined || payload.phone !== undefined) {
+    const existing = await db.query.users.findFirst({
+      where: (u, { or, eq, ne }) =>
+        or(
+          payload.email ? eq(u.email, payload.email) : undefined,
+          payload.phone ? eq(u.phone, payload.phone) : undefined
+        )
+    });
+
+    if (existing && existing.id !== id) {
+      if (payload.email && existing.email === payload.email) {
+        throw new ApiError(HTTP_STATUS.CONFLICT, "Email already in use");
+      }
+
+      if (payload.phone && existing.phone === payload.phone) {
+        throw new ApiError(HTTP_STATUS.CONFLICT, "Phone number already in use");
+      }
+    }
+  }
 
   try {
     const rows = await db.update(users).set(updateValues).where(whereCond).returning();
+
     const updated = rows[0];
+
     if (!updated) {
       throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
     }
+
     return updated as User;
   } catch (err) {
     return handleUniqueViolation(err);

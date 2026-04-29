@@ -79,7 +79,7 @@ export const users = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
     password: text("password").notNull(),
-    phone: text("phone"),
+    phone: text("phone").notNull().unique(),
     phoneVerified: boolean("phone_verified").default(false),
     emailVerified: boolean("email_verified").default(false),
     role: roleEnum("role").notNull(),

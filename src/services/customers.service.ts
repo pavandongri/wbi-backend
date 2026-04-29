@@ -238,12 +238,27 @@ export const updateCustomer = async (
     await ensureCustomerMappedToCompany(id, auth.companyId);
   }
 
-  const updateConditions: any[] = [eq(customers.id, id), eq(customers.isActive, true)];
-  const whereCond = and(...updateConditions);
+  const whereCond = and(eq(customers.id, id), eq(customers.isActive, true));
 
-  const updateValues: Record<string, unknown> = { updatedAt: new Date() };
+  const updateValues: Record<string, unknown> = {
+    updatedAt: new Date()
+  };
+
   if (payload.name !== undefined) updateValues.name = payload.name;
-  if (payload.phone !== undefined) updateValues.phone = payload.phone;
+
+  if (payload.phone !== undefined) {
+    updateValues.phone = payload.phone;
+
+    const existing = await db.query.customers.findFirst({
+      where: (c, { and, eq, ne }) =>
+        and(eq(c.phone, payload.phone ?? ""), eq(c.isActive, true), ne(c.id, id))
+    });
+
+    if (existing) {
+      throw new ApiError(HTTP_STATUS.CONFLICT, "Phone number already in use");
+    }
+  }
+
   if (payload.email !== undefined) updateValues.email = payload.email;
   if (payload.city !== undefined) updateValues.city = payload.city;
   if (payload.state !== undefined) updateValues.state = payload.state;
@@ -252,27 +267,15 @@ export const updateCustomer = async (
   if (payload.address !== undefined) updateValues.address = payload.address;
   if (payload.tags !== undefined) updateValues.tags = payload.tags;
 
-  if (payload.phone !== undefined) {
-    const [existingCustomer] = await db
-      .select()
-      .from(customers)
-      .where(and(eq(customers.phone, payload.phone), eq(customers.isActive, true)))
-      .limit(1);
-
-    if (existingCustomer) {
-      throw new ApiError(
-        HTTP_STATUS.BAD_REQUEST,
-        `Customer with phone ${payload.phone} already exists`
-      );
-    }
-  }
-
   try {
     const rows = await db.update(customers).set(updateValues).where(whereCond).returning();
+
     const updated = rows[0];
+
     if (!updated) {
       throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
     }
+
     return updated as Customer;
   } catch (err) {
     return handleUniqueViolation(err);

@@ -12,23 +12,58 @@ export const requireNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
 export const handleUniqueViolation = (err: unknown): never => {
-  const code = typeof err === "object" && err ? (err as { code?: string }).code : undefined;
-  if (code === "23505") {
-    throw new ApiError(409, HTTP_MESSAGES.ERROR.DUPLICATE_RESOURCE);
-  }
-  throw new ApiError(HTTP_STATUS.INTERNAL_SERVER_ERROR, getErrorMessage(err));
-};
+  // 🔑 Drizzle wraps the actual PG error inside `cause`
+  const e = (err as any)?.cause ?? err;
 
-export const getErrorMessage = (error: unknown): string => {
-  if (error instanceof ApiError) {
-    return error.message ?? "Unknown API error";
+  if (typeof e === "object" && e) {
+    const pgErr = e as {
+      code?: string;
+      detail?: string;
+      column?: string;
+      constraint?: string;
+    };
+
+    // 🔴 UNIQUE VIOLATION
+    if (pgErr.code === "23505") {
+      let field = "field";
+
+      // Extract from: Key (email)=(...)
+      const match = pgErr.detail?.match(/Key \(([^)]+)\)=/);
+      if (match?.[1]) {
+        field = match[1];
+      }
+      // fallback: users_email_key → email
+      else if (pgErr.constraint) {
+        const parts = pgErr.constraint.split("_");
+        if (parts.length >= 2) {
+          field = parts[1];
+        }
+      }
+
+      const fieldMap: Record<string, string> = {
+        email: "Email",
+        phone: "Phone number"
+      };
+
+      const readableField = fieldMap[field] ?? field;
+
+      throw new ApiError(HTTP_STATUS.CONFLICT, `${readableField} already in use`);
+    }
+
+    // 🟡 FK
+    if (pgErr.code === "23503") {
+      throw new ApiError(HTTP_STATUS.BAD_REQUEST, "Referenced record does not exist");
+    }
+
+    // 🟠 NOT NULL
+    if (pgErr.code === "23502") {
+      const field = pgErr.column ?? "field";
+      throw new ApiError(HTTP_STATUS.BAD_REQUEST, `${field} is required`);
+    }
   }
 
-  if (error instanceof Error) {
-    return error.message ?? "Unknown error";
-  }
-
-  return "Unknown error";
+  // ❗ fallback
+  throw new ApiError(HTTP_STATUS.INTERNAL_SERVER_ERROR, "Something went wrong");
 };
 
 export const getIdParam = (value: string | string[] | undefined): string => {
