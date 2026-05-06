@@ -1,8 +1,10 @@
+CREATE TYPE "public"."billing_interval" AS ENUM('weekly', 'monthly', 'yearly');--> statement-breakpoint
 CREATE TYPE "public"."campaign_status" AS ENUM('draft', 'scheduled', 'running', 'completed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."group_status" AS ENUM('active', 'inactive', 'deleted');--> statement-breakpoint
 CREATE TYPE "public"."message_direction" AS ENUM('inbound', 'outbound');--> statement-breakpoint
 CREATE TYPE "public"."message_status" AS ENUM('created', 'queued', 'sent', 'delivered', 'read', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('super_admin', 'admin', 'staff');--> statement-breakpoint
+CREATE TYPE "public"."subscription_status" AS ENUM('active', 'cancelled', 'expired', 'scheduled');--> statement-breakpoint
 CREATE TYPE "public"."template_category" AS ENUM('marketing', 'utility');--> statement-breakpoint
 CREATE TYPE "public"."template_header_type" AS ENUM('text', 'image', 'video', 'document', 'location', 'none');--> statement-breakpoint
 CREATE TYPE "public"."template_status" AS ENUM('pending', 'approved', 'rejected', 'deleted');--> statement-breakpoint
@@ -89,6 +91,46 @@ CREATE TABLE "messages" (
 	"read_at" timestamp with time zone
 );
 --> statement-breakpoint
+CREATE TABLE "subscription_plans" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"code" text NOT NULL,
+	"description" text,
+	"amount" integer NOT NULL,
+	"platform_amount" integer NOT NULL,
+	"message_amount" integer NOT NULL,
+	"currency" text DEFAULT 'INR' NOT NULL,
+	"interval" "billing_interval" NOT NULL,
+	"features" jsonb,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "subscription_plans_name_unique" UNIQUE("name"),
+	CONSTRAINT "subscription_plans_code_unique" UNIQUE("code")
+);
+--> statement-breakpoint
+CREATE TABLE "subscriptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_id" uuid NOT NULL,
+	"plan_id" uuid NOT NULL,
+	"status" "subscription_status" DEFAULT 'active' NOT NULL,
+	"plan_name" text NOT NULL,
+	"plan_code" text NOT NULL,
+	"plan_description" text,
+	"interval" text NOT NULL,
+	"plan_features" jsonb,
+	"plan_amount" integer NOT NULL,
+	"plan_platform_amount" integer NOT NULL,
+	"plan_message_amount" integer NOT NULL,
+	"currency" text DEFAULT 'INR' NOT NULL,
+	"discount" integer DEFAULT 0 NOT NULL,
+	"net_amount" integer NOT NULL,
+	"start_date" timestamp with time zone DEFAULT now() NOT NULL,
+	"end_date" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "templates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
@@ -120,7 +162,7 @@ CREATE TABLE "users" (
 	"name" text NOT NULL,
 	"email" text NOT NULL,
 	"password" text NOT NULL,
-	"phone" text,
+	"phone" text NOT NULL,
 	"phone_verified" boolean DEFAULT false,
 	"email_verified" boolean DEFAULT false,
 	"role" "role" NOT NULL,
@@ -132,7 +174,8 @@ CREATE TABLE "users" (
 	"deleted_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "users_email_unique" UNIQUE("email")
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_phone_unique" UNIQUE("phone")
 );
 --> statement-breakpoint
 ALTER TABLE "customer_company_mappings" ADD CONSTRAINT "customer_company_mappings_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -145,6 +188,8 @@ ALTER TABLE "groups" ADD CONSTRAINT "groups_deleted_by_users_id_fk" FOREIGN KEY 
 ALTER TABLE "messages" ADD CONSTRAINT "messages_template_id_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."templates"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_plan_id_subscription_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."subscription_plans"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "templates" ADD CONSTRAINT "templates_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "templates" ADD CONSTRAINT "templates_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "templates" ADD CONSTRAINT "templates_deleted_by_users_id_fk" FOREIGN KEY ("deleted_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

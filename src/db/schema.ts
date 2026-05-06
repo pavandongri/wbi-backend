@@ -2,6 +2,7 @@ import {
   AnyPgColumn,
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -11,6 +12,15 @@ import {
   uniqueIndex,
   uuid
 } from "drizzle-orm/pg-core";
+
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "cancelled",
+  "expired",
+  "scheduled"
+]);
+
+export const billingIntervalEnum = pgEnum("billing_interval", ["weekly", "monthly", "yearly"]);
 
 export const roleEnum = pgEnum("role", ["super_admin", "admin", "staff"]);
 
@@ -261,3 +271,57 @@ export const messages = pgTable(
     index("messages_created_at_idx").on(table.createdAt)
   ]
 );
+
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  name: text("name").notNull().unique(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+
+  amount: integer("amount").notNull(),
+  platformAmount: integer("platform_amount").notNull(),
+  messageAmount: integer("message_amount").notNull(),
+
+  currency: text("currency").default("INR").notNull(),
+  interval: billingIntervalEnum("interval").notNull(),
+  features: jsonb("features").$type<Record<string, any>>(),
+
+  isActive: boolean("is_active").default(true).notNull(),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  companyId: uuid("company_id")
+    .references(() => companies.id)
+    .notNull(),
+
+  planId: uuid("plan_id")
+    .references(() => subscriptionPlans.id)
+    .notNull(),
+
+  status: subscriptionStatusEnum("status").default("active").notNull(),
+
+  planName: text("plan_name").notNull(),
+  planCode: text("plan_code").notNull(),
+  planDescription: text("plan_description"),
+  planInterval: text("interval").notNull(),
+  planFeatures: jsonb("plan_features").$type<Record<string, any>>(),
+  planAmount: integer("plan_amount").notNull(),
+  planPlatformAmount: integer("plan_platform_amount").notNull(),
+  planMessageAmount: integer("plan_message_amount").notNull(),
+  currency: text("currency").default("INR").notNull(),
+
+  discount: integer("discount").default(0).notNull(),
+  netAmount: integer("net_amount").notNull(),
+
+  startDate: timestamp("start_date", { withTimezone: true }).defaultNow().notNull(),
+  endDate: timestamp("end_date", { withTimezone: true }).defaultNow().notNull(),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});

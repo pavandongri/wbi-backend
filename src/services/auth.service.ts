@@ -120,6 +120,7 @@ export const signup = async (
           companyId: company.id,
           name: payload.name,
           email: payload.email,
+          phone: payload.companyPhone,
           password: passwordHash,
           role: ROLES.ADMIN,
           status: "active",

@@ -99,6 +99,27 @@ export const ensureCustomerMappedToCompany = async (
   }
 };
 
+export const requireSuperAdmin = (auth: AuthContext): void => {
+  if (!isSuperAdmin(auth.role)) {
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, "Only super_admins can access this resource");
+  }
+};
+
+export const requireAdmin = (auth: AuthContext): void => {
+  if (!isAdmin(auth.role)) {
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, "Only admins can access this resource");
+  }
+};
+
+export const requireAdminOrSuperAdmin = (auth: AuthContext): void => {
+  if (!isAdminOrHigher(auth.role)) {
+    throw new ApiError(
+      HTTP_STATUS.FORBIDDEN,
+      "Only admins and  super_admins can access this resource"
+    );
+  }
+};
+
 export const isSuperAdmin = (role: string): boolean => role === ROLES.SUPER_ADMIN;
 
 export const isAdmin = (role: string): boolean => role === ROLES.ADMIN;
@@ -117,6 +138,16 @@ export function getValue(obj: any, path: string): boolean {
 
 export function getMissingFields(payload: any, fields: string[]): string[] {
   return fields.filter((field) => !getValue(payload, field)).map((field) => `${field} is required`);
+}
+
+export function validateRequiredFields(payload: any, requiredFields: string[] = []) {
+  const missingFields = requiredFields.filter((field) => {
+    return !getValue(payload, field);
+  });
+
+  if (missingFields.length > 0) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, `missing [${missingFields.join(", ")}]`);
+  }
 }
 
 export const sleeper = {

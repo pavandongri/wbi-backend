@@ -9,6 +9,8 @@ import customerCompanyMappingsRoute from "./customer-company-mappings.route";
 import customerGroupMappingsRoute from "./customer-group-mappings.route";
 import templatesRoute from "./templates.route";
 import messagesRoute from "./messages.route";
+import subscriptionPlansRoute from "./subscription-plans.route";
+import subscriptionsRoute from "./subscriptions.route";
 
 const router = Router();
 
@@ -22,5 +24,7 @@ router.use("/customer-company-mappings", customerCompanyMappingsRoute);
 router.use("/customer-group-mappings", customerGroupMappingsRoute);
 router.use("/templates", templatesRoute);
 router.use("/messages", messagesRoute);
+router.use("/subscription-plans", subscriptionPlansRoute);
+router.use("/subscriptions", subscriptionsRoute);
 
 export default router;

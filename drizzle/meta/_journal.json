@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777054243022,
+      "when": 1778094719704,
       "tag": "0000_initial_migration",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1777490376286,
-      "tag": "0001_added_phone_validation_for_users",
       "breakpoints": true
     }
   ]

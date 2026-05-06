@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, SQL } from "drizzle-orm";
 
 import { ROLES } from "constants/common.constants";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
@@ -36,7 +36,7 @@ const mapSortByToColumn = (sortBy: string) => {
 // used to create super-admin , admin
 export const createUser = async (payload: CreateUserPayload, auth: AuthContext): Promise<User> => {
   if (!isAdminOrHigher(auth.role)) {
-    throw new ApiError(HTTP_STATUS.FORBIDDEN, "Only admins can create users");
+    throw new ApiError(HTTP_STATUS.FORBIDDEN, "Only admins or super_admins can create users");
   }
 
   const missingInputs = getMissingFields(payload, ["name", "role", "email", "phone", "password"]);
@@ -212,15 +212,25 @@ export const updateUser = async (
 
   // ✅ Uniqueness check ONLY for fields being updated
   if (payload.email !== undefined || payload.phone !== undefined) {
-    const existing = await db.query.users.findFirst({
-      where: (u, { or, eq, ne }) =>
-        or(
-          payload.email ? eq(u.email, payload.email) : undefined,
-          payload.phone ? eq(u.phone, payload.phone) : undefined
-        )
-    });
+    const conditions: SQL[] = [];
 
-    if (existing && existing.id !== id) {
+    if (payload.email) {
+      conditions.push(eq(users.email, payload.email));
+    }
+
+    if (payload.phone) {
+      conditions.push(eq(users.phone, payload.phone));
+    }
+
+    let existing = null;
+
+    if (conditions.length > 0) {
+      existing = await db.query.users.findFirst({
+        where: (u, { and, or, ne }) => and(or(...conditions), ne(u.id, id))
+      });
+    }
+
+    if (existing) {
       if (payload.email && existing.email === payload.email) {
         throw new ApiError(HTTP_STATUS.CONFLICT, "Email already in use");
       }
