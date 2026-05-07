@@ -12,5 +12,8 @@ export const env: envType = {
   NODE_ENV: process.env.NODE_ENV ?? "",
   DATABASE_URL: process.env.DATABASE_URL ?? "",
   AUTH_COOKIE_SECRET: process.env.AUTH_COOKIE_SECRET ?? "",
-  CORS_ORIGIN: process.env.CORS_ORIGIN ?? ""
+  CORS_ORIGIN: process.env.CORS_ORIGIN ?? "",
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID ?? "",
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET ?? "",
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET ?? ""
 };

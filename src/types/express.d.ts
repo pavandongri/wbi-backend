@@ -14,6 +14,7 @@ declare module "express-serve-static-core" {
 
   interface Request {
     auth?: AuthContext;
+    rawBody?: Buffer;
   }
 
   interface Response {

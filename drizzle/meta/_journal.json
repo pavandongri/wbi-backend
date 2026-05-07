@@ -5,8 +5,36 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1776608427508,
-      "tag": "0000_initial_commit",
+      "when": 1778094719704,
+      "tag": "0000_initial_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778105935900,
+      "tag": "0001_added_payments_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778106494015,
+      "tag": "0002_added_draft_status_to_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778182970849,
+      "tag": "0003_added_subscriptionPlanId_to_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778185292914,
+      "tag": "0004_added_messageCredit_to_companies_table",
       "breakpoints": true
     }
   ]

@@ -4,6 +4,9 @@ export type envType = {
   DATABASE_URL: string;
   AUTH_COOKIE_SECRET: string;
   CORS_ORIGIN: string;
+  RAZORPAY_KEY_ID: string;
+  RAZORPAY_KEY_SECRET: string;
+  RAZORPAY_WEBHOOK_SECRET: string;
 };
 
 export type AuthUserDetails = {
