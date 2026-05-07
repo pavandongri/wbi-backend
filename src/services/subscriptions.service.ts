@@ -1,9 +1,9 @@
-import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, sql } from "drizzle-orm";
 
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db/index";
-import { subscriptionPlans, subscriptions } from "db/schema";
+import { companies, subscriptionPlans, subscriptions } from "db/schema";
 import { AuthContext } from "types/common.types";
 import {
   CreateSubscriptionPayload,
@@ -82,7 +82,7 @@ export const createSubscription = async (
     .values({
       companyId: auth.companyId,
       planId: payload.planId,
-      status: payload.status ?? "active",
+      status: payload.status ?? "draft",
       planName: plan.name,
       planCode: plan.code,
       planDescription: plan.description ?? undefined,
@@ -100,12 +100,20 @@ export const createSubscription = async (
     .returning();
 
   const created = rows[0];
+
   if (!created) {
     throw new ApiError(
       HTTP_STATUS.INTERNAL_SERVER_ERROR,
       HTTP_MESSAGES.ERROR.INTERNAL_SERVER_ERROR
     );
   }
+
+  await db
+    .update(companies)
+    .set({
+      messageCredits: sql`${companies.messageCredits} + ${plan.messageAmount}`
+    })
+    .where(eq(companies.id, auth.companyId));
 
   return created;
 };

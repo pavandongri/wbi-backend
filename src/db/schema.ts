@@ -14,11 +14,14 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "draft",
   "active",
   "cancelled",
   "expired",
   "scheduled"
 ]);
+
+// Define enums
 
 export const billingIntervalEnum = pgEnum("billing_interval", ["weekly", "monthly", "yearly"]);
 
@@ -63,6 +66,24 @@ export const campaignStatusEnum = pgEnum("campaign_status", [
 
 export const groupStatusEnum = pgEnum("group_status", ["active", "inactive", "deleted"]);
 
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "created",
+  "authorized",
+  "captured",
+  "failed",
+  "refunded"
+]);
+
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "draft",
+  "issued",
+  "paid",
+  "void",
+  "overdue"
+]);
+
+// Define tables
+
 export const companies = pgTable("companies", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull().unique(),
@@ -75,6 +96,7 @@ export const companies = pgTable("companies", {
   country: text("country"),
   zipcode: text("zipcode"),
   email: text("email").unique(),
+  messageCredits: integer("message_credits").default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
@@ -325,3 +347,71 @@ export const subscriptions = pgTable("subscriptions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
+
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+
+    companyId: uuid("company_id")
+      .references(() => companies.id)
+      .notNull(),
+    subscriptionId: uuid("subscription_id").references(() => subscriptions.id),
+    subscriptionPlanId: uuid("subscription_plan_id").references(() => subscriptionPlans.id),
+
+    razorpayOrderId: text("razorpay_order_id").notNull().unique(),
+    razorpayPaymentId: text("razorpay_payment_id").unique(),
+    razorpaySignature: text("razorpay_signature"),
+
+    type: text("type").default("subscription").notNull(),
+    amount: integer("amount").notNull(),
+    currency: text("currency").default("INR").notNull(),
+
+    status: paymentStatusEnum("status").default("created").notNull(),
+    paymentMethod: text("payment_method"),
+    failureReason: text("failure_reason"),
+
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [
+    index("payments_company_id_idx").on(table.companyId),
+    index("payments_subscription_id_idx").on(table.subscriptionId),
+    index("payments_status_idx").on(table.status),
+    index("payments_razorpay_order_id_idx").on(table.razorpayOrderId),
+    index("payments_razorpay_payment_id_idx").on(table.razorpayPaymentId)
+  ]
+);
+
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .references(() => companies.id)
+      .notNull(),
+    subscriptionId: uuid("subscription_id").references(() => subscriptions.id),
+    paymentId: uuid("payment_id").references(() => payments.id),
+
+    invoiceNumber: text("invoice_number").notNull().unique(),
+    taxAmount: integer("tax_amount").default(0).notNull(),
+    totalAmount: integer("total_amount").notNull(),
+    currency: text("currency").default("INR").notNull(),
+
+    status: invoiceStatusEnum("status").default("draft").notNull(),
+    notes: text("notes"),
+    pdfUrl: text("pdf_url"),
+
+    issuedAt: timestamp("issued_at", { withTimezone: true }).defaultNow().notNull(),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [
+    index("invoices_company_id_idx").on(table.companyId),
+    index("invoices_invoice_number_idx").on(table.invoiceNumber),
+    index("invoices_status_idx").on(table.status)
+  ]
+);

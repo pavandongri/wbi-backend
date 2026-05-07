@@ -3,7 +3,7 @@ import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db/index";
 import { companies, users } from "db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { LoginPayload, SignupPayload } from "types/auth.types";
 import { ApiError } from "utils/api-error.utils";
@@ -15,6 +15,7 @@ export const login = async (
   userId: string;
   companyId: string;
   companyPhone: string | null;
+  messageCredits: number;
   role: string;
   userDetails: { name: string; email: string; phone: string | null };
 }> => {
@@ -48,7 +49,8 @@ export const login = async (
     .select({
       id: companies.id,
       status: companies.status,
-      phone: companies.phone
+      phone: companies.phone,
+      messageCredits: companies.messageCredits
     })
     .from(companies)
     .where(and(eq(companies.id, user.companyId), eq(companies.status, "active")))
@@ -62,7 +64,8 @@ export const login = async (
   return {
     userId: user.id,
     companyId: user.companyId,
-    companyPhone: company?.phone ?? null,
+    companyPhone: company.phone ?? null,
+    messageCredits: company.messageCredits ?? 0,
     role: user.role,
     userDetails: {
       name: user.name,
@@ -78,6 +81,7 @@ export const signup = async (
   userId: string;
   companyId: string;
   companyPhone: string;
+  messageCredits: number;
   role: string;
   userDetails: { name: string; email: string; phone: string | null };
 }> => {
@@ -101,7 +105,11 @@ export const signup = async (
 
           status: "active"
         })
-        .returning({ id: companies.id, phone: companies.phone });
+        .returning({
+          id: companies.id,
+          phone: companies.phone,
+          messageCredits: companies.messageCredits
+        });
 
       const company = companyRows[0];
       if (!company) {
@@ -147,6 +155,7 @@ export const signup = async (
         userId: created.id,
         companyId: created.companyId,
         companyPhone: company.phone,
+        messageCredits: company.messageCredits ?? 0,
         role: created.role,
         userDetails: {
           name: created.name,
@@ -166,6 +175,7 @@ export const getMe = async (
   userId: string;
   companyId: string;
   companyPhone: string;
+  messageCredits: number;
   role: string;
   name: string;
   email: string;
@@ -175,6 +185,7 @@ export const getMe = async (
       userId: users.id,
       companyId: users.companyId,
       companyPhone: companies.phone,
+      messageCredits: sql<number>`COALESCE(${companies.messageCredits}, 0)`,
       role: users.role,
       name: users.name,
       email: users.email

@@ -1,10 +1,12 @@
 import bcrypt from "bcrypt";
+import { env } from "config/env";
 import { CONSTANTS, ROLES } from "constants/common.constants";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db";
 import { customerCompanyMappings } from "db/schema";
 import { and, eq } from "drizzle-orm";
+import Razorpay from "razorpay";
 import { AuthContext } from "types/common.types";
 import { ApiError } from "./api-error.utils";
 
@@ -62,8 +64,10 @@ export const handleUniqueViolation = (err: unknown): never => {
     }
   }
 
+  const errorMessage = err instanceof Error ? err.message : "Something went wrong";
+
   // ❗ fallback
-  throw new ApiError(HTTP_STATUS.INTERNAL_SERVER_ERROR, "Something went wrong");
+  throw new ApiError(HTTP_STATUS.INTERNAL_SERVER_ERROR, errorMessage);
 };
 
 export const getIdParam = (value: string | string[] | undefined): string => {
@@ -170,4 +174,11 @@ export const comparePassword = async (
   hashedPassword: string
 ): Promise<boolean> => {
   return bcrypt.compare(password, hashedPassword);
+};
+
+export const getRazorpay = () => {
+  return new Razorpay({
+    key_id: env.RAZORPAY_KEY_ID,
+    key_secret: env.RAZORPAY_KEY_SECRET
+  });
 };

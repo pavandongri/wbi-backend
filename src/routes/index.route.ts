@@ -11,6 +11,8 @@ import templatesRoute from "./templates.route";
 import messagesRoute from "./messages.route";
 import subscriptionPlansRoute from "./subscription-plans.route";
 import subscriptionsRoute from "./subscriptions.route";
+import paymentsRoute from "./payments.route";
+import invoicesRoute from "./invoices.route";
 
 const router = Router();
 
@@ -26,5 +28,7 @@ router.use("/templates", templatesRoute);
 router.use("/messages", messagesRoute);
 router.use("/subscription-plans", subscriptionPlansRoute);
 router.use("/subscriptions", subscriptionsRoute);
+router.use("/payments", paymentsRoute);
+router.use("/invoices", invoicesRoute);
 
 export default router;
