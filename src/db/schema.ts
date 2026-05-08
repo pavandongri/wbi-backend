@@ -97,6 +97,10 @@ export const companies = pgTable("companies", {
   zipcode: text("zipcode"),
   email: text("email").unique(),
   messageCredits: integer("message_credits").default(0),
+  facebookBusinessId: text("facebook_business_id"),
+  wabaId: text("waba_id"),
+  whatsappPhoneNumberId: text("whatsapp_phone_number_id"),
+  whatsappAccessToken: text("whatsapp_access_token"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });

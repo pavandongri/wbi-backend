@@ -36,6 +36,13 @@
       "when": 1778185292914,
       "tag": "0004_added_messageCredit_to_companies_table",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778252935531,
+      "tag": "0005_added_facebook_whatsapp_fields_to_companies",
+      "breakpoints": true
     }
   ]
 }

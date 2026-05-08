@@ -7,6 +7,11 @@ export type envType = {
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
   RAZORPAY_WEBHOOK_SECRET: string;
+  FACEBOOK_APP_ID: string;
+  FACEBOOK_APP_SECRET: string;
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: string;
+  WEBHOOK_CALLBACK_URL: string;
+  GRAPH_API_BASE: string;
 };
 
 export type AuthUserDetails = {
