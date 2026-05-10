@@ -1,9 +1,11 @@
 import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
 
+import { env } from "config/env";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db/index";
 import { companies } from "db/schema";
+import { logger } from "logger/app.logger";
 import { AuthContext } from "types/common.types";
 import {
   Company,
@@ -11,10 +13,12 @@ import {
   mapSortByToColumn,
   UpdateCompanyPayload
 } from "types/company.types";
+import { ExchangeCodeResult, FacebookTokenResponse } from "types/webhook.types";
 import { ApiError } from "utils/api-error.utils";
 import { handleUniqueViolation, isSuperAdmin } from "utils/helpers";
 import { assertUuidParam, buildListResponse, parseQ, parseSort } from "utils/list.utils";
 import { parsePagination } from "utils/pagination.utils";
+import { metaPostApiClient } from "./meta.service";
 
 export const createCompany = async (
   payload: CreateCompanyPayload,
@@ -204,4 +208,95 @@ export const deleteCompany = async (id: string, auth: AuthContext): Promise<{ id
   }
 
   return { id: updated.id };
+};
+
+export const exchangeCodeAndStoreAssets = async (
+  code: string,
+  wabaId: string,
+  phoneNumberId: string,
+  auth: AuthContext
+): Promise<ExchangeCodeResult> => {
+  logger.info("Starting WhatsApp onboarding");
+
+  const [company] = await db
+    .select()
+    .from(companies)
+    .where(and(eq(companies.id, auth.companyId), eq(companies.status, "active")))
+    .limit(1);
+
+  if (!company) {
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
+  }
+
+  logger.info("Exchanging code for short-lived token");
+
+  const shortLivedTokenData = (await (
+    await fetch(`${env.GRAPH_API_BASE}/oauth/access_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: env.FACEBOOK_APP_ID,
+        client_secret: env.FACEBOOK_APP_SECRET,
+        code
+      })
+    })
+  ).json()) as FacebookTokenResponse;
+
+  if (shortLivedTokenData.error || !shortLivedTokenData.access_token) {
+    throw new ApiError(
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      shortLivedTokenData.error?.message ?? "Failed to exchange OAuth code"
+    );
+  }
+
+  logger.info("Getting long-lived token");
+
+  const longLivedTokenData = (await (
+    await fetch(
+      `${env.GRAPH_API_BASE}/oauth/access_token?${new URLSearchParams({
+        grant_type: "fb_exchange_token",
+        client_id: env.FACEBOOK_APP_ID,
+        client_secret: env.FACEBOOK_APP_SECRET,
+        fb_exchange_token: shortLivedTokenData.access_token
+      })}`
+    )
+  ).json()) as FacebookTokenResponse;
+
+  if (longLivedTokenData.error || !longLivedTokenData.access_token) {
+    throw new ApiError(
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      longLivedTokenData.error?.message ?? "Failed to exchange long-lived token"
+    );
+  }
+
+  const accessToken = longLivedTokenData.access_token;
+
+  logger.info("Registering phone number");
+
+  await metaPostApiClient(`/${phoneNumberId}/register`, accessToken, {
+    messaging_product: "whatsapp",
+    pin: "123456"
+  });
+
+  logger.info("Subscribing WABA webhooks");
+
+  await metaPostApiClient(`/${wabaId}/subscribed_apps`, accessToken);
+
+  logger.info("Saving onboarding data");
+
+  await db
+    .update(companies)
+    .set({
+      wabaId,
+      whatsappPhoneNumberId: phoneNumberId,
+      whatsappAccessToken: accessToken,
+      updatedAt: new Date()
+    })
+    .where(eq(companies.id, auth.companyId));
+
+  return {
+    wabaId,
+    whatsappPhoneNumberId: phoneNumberId,
+    phoneNumber: company.phone
+  };
 };

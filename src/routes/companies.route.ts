@@ -3,7 +3,6 @@ import { Router } from "express";
 import { requireAuth } from "middleware/auth.middleware";
 import { asyncHandler } from "utils/catch-async";
 import * as companiesController from "../controllers/companies.controller";
-import * as webhookController from "../controllers/webhook.controller";
 
 const router = Router();
 
@@ -14,11 +13,6 @@ router.patch("/:id", requireAuth, asyncHandler(companiesController.updateCompany
 router.delete("/:id", requireAuth, asyncHandler(companiesController.deleteCompany));
 
 // WhatsApp embedded Facebook login
-router.post("/facebook/exchange-code", requireAuth, asyncHandler(webhookController.exchangeCode));
-router.post(
-  "/facebook/subscribe-to-waba",
-  requireAuth,
-  asyncHandler(webhookController.subscribeToWABA)
-);
+router.post("/facebook/exchange-code", requireAuth, asyncHandler(companiesController.exchangeCode));
 
 export default router;

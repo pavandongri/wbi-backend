@@ -1,42 +1,9 @@
 import type { Request, Response } from "express";
 
 import { env } from "config/env";
-import { HTTP_STATUS } from "constants/http-status.contants";
 import { logger } from "logger/app.logger";
-import { ApiError } from "utils/api-error.utils";
-import { apiSuccessResponse } from "utils/api-response";
+import { WhatsAppMessagesValue } from "types/webhook.types";
 import * as webhookService from "../services/webhook.service";
-
-export const exchangeCode = async (req: Request, res: Response): Promise<Response> => {
-  const { code, wabaId, phoneNumberId } = req.body;
-
-  if (!code) throw new ApiError(HTTP_STATUS.BAD_REQUEST, "code is required");
-  if (!wabaId) throw new ApiError(HTTP_STATUS.BAD_REQUEST, "waba_id is required");
-  if (!phoneNumberId) throw new ApiError(HTTP_STATUS.BAD_REQUEST, "phone_number_id is required");
-
-  const result = await webhookService.exchangeCodeAndStoreAssets(
-    code,
-    wabaId,
-    phoneNumberId,
-    req.auth!
-  );
-
-  return apiSuccessResponse(req, res, {
-    data: result,
-    message: "WhatsApp Business Account connected successfully",
-    statusCode: HTTP_STATUS.OK
-  });
-};
-
-export const subscribeToWABA = async (req: Request, res: Response): Promise<Response> => {
-  const result = await webhookService.subscribeToWABA(req.auth!);
-
-  return apiSuccessResponse(req, res, {
-    data: result,
-    message: "Webhook configured successfully",
-    statusCode: HTTP_STATUS.OK
-  });
-};
 
 // GET /api/v1/webhooks/whatsapp — Facebook webhook verification
 export const verifyWebhook = (req: Request, res: Response): void => {
@@ -94,16 +61,18 @@ export const handleWebhook = (req: Request, res: Response): void => {
     for (const change of entry.changes ?? []) {
       switch (change.field) {
         case "messages": {
-          const value: any = change.value;
+          const value: WhatsAppMessagesValue = change.value as WhatsAppMessagesValue;
 
-          // Incoming user messages
           if (value?.messages?.length) {
-            // TODO: handle inbound messages
+            webhookService.handleInboundMessages(value).catch((err) => {
+              logger.error("handleInboundMessages failed", { err });
+            });
           }
 
-          // Message delivery/read/failure statuses
           if (value?.statuses?.length) {
-            // TODO: handle message status updates
+            webhookService.handleMessageStatusUpdates(value.statuses).catch((err) => {
+              logger.error("handleMessageStatusUpdates failed", { err });
+            });
           }
 
           break;

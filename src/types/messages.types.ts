@@ -1,10 +1,8 @@
 import { messages } from "db/schema";
 
+export type { MessageDirection, MessageStatus, MessageType } from "constants/message.constants";
+
 export type Message = typeof messages.$inferSelect;
-
-export type MessageStatus = "created" | "queued" | "sent" | "delivered" | "read" | "failed";
-
-export type MessageDirection = "inbound" | "outbound";
 
 export type CreateMessagePayload = {
   from: string;
@@ -13,11 +11,10 @@ export type CreateMessagePayload = {
   templateId?: string | null;
   templateHeaderParams?: string | null;
   templateBodyParams?: string[] | null;
+  messageType?: string | null;
   status?: string;
-  direction: string;
   failedReason?: string | null;
   userId?: string | null;
-  cost?: number | null;
   sentAt?: string | Date | null;
   deliveredAt?: string | Date | null;
   readAt?: string | Date | null;
@@ -32,11 +29,10 @@ export type UpdateMessagePayload = Partial<
     | "templateId"
     | "templateHeaderParams"
     | "templateBodyParams"
+    | "messageType"
     | "status"
-    | "direction"
     | "failedReason"
     | "userId"
-    | "cost"
     | "sentAt"
     | "deliveredAt"
     | "readAt"

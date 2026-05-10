@@ -17,3 +17,32 @@ export type ExchangeCodeResult = {
   whatsappPhoneNumberId: string;
   phoneNumber: string;
 };
+
+export type WhatsAppWebhookMetadata = {
+  display_phone_number: string;
+  phone_number_id: string;
+};
+
+export type WhatsAppInboundMessage = {
+  from: string;
+  id: string;
+  timestamp: string;
+  type: string;
+  text?: { body: string };
+};
+
+export type WhatsAppMessageStatus = {
+  id: string;
+  recipient_id: string;
+  status: "sent" | "delivered" | "read" | "failed";
+  timestamp: string;
+  errors?: { code: number; title: string }[];
+};
+
+export type WhatsAppMessagesValue = {
+  messaging_product: string;
+  metadata: WhatsAppWebhookMetadata;
+  contacts?: { profile: { name: string }; wa_id: string }[];
+  messages?: WhatsAppInboundMessage[];
+  statuses?: WhatsAppMessageStatus[];
+};

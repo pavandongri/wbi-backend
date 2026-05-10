@@ -43,6 +43,13 @@
       "when": 1778252935531,
       "tag": "0005_added_facebook_whatsapp_fields_to_companies",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778274158483,
+      "tag": "0006_added_messageType_to_messages",
+      "breakpoints": true
     }
   ]
 }

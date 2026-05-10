@@ -1,13 +1,20 @@
 import { and, eq, ne } from "drizzle-orm";
 
-import { MESSAGE_DIRECTIONS, MESSAGE_STATUSES } from "constants/message.constants";
+import { env } from "config/env";
+import { ROLES } from "constants/common.constants";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
-import { ROLES } from "constants/common.constants";
+import {
+  MESSAGE_DIRECTIONS,
+  MESSAGE_STATUSES,
+  MESSAGE_TYPES,
+  MessageDirection,
+  MessageStatus,
+  MessageType
+} from "constants/message.constants";
 import { db } from "db/index";
 import { messages, templates } from "db/schema";
 import { AuthContext } from "types/common.types";
-import { MessageDirection, MessageStatus } from "types/messages.types";
 import { ApiError } from "utils/api-error.utils";
 
 export type TemplateRow = typeof templates.$inferSelect;
@@ -89,11 +96,52 @@ export const parseMessageCost = (value: unknown, field: string): number | undefi
   return n;
 };
 
+export const parseMessageType = (raw: unknown): MessageType => {
+  if (typeof raw !== "string") {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "messageType is invalid");
+  }
+  const t = raw.trim().toLowerCase() as MessageType;
+  if (!MESSAGE_TYPES.includes(t)) {
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      `messageType must be one of: ${MESSAGE_TYPES.join(", ")}`
+    );
+  }
+  return t;
+};
+
+export const parseMessageTypeFilter = (raw: unknown) => {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "string" || raw.trim().length === 0) return undefined;
+  return parseMessageType(raw);
+};
+
+/** Returns cost in INR. text = 0 (session/free message). */
+export const resolveMessageCost = (messageType: MessageType): number => {
+  switch (messageType) {
+    case "marketing":
+      return parseFloat(env.MARKETING_MESSAGE_COST) || 0.97;
+    case "utility":
+      return parseFloat(env.UTILITY_MESSAGE_COST) || 0.22;
+    case "authentication":
+      return parseFloat(env.AUTHENTICATION_MESSAGE_COST) || 0.22;
+    case "text":
+      return 0;
+  }
+};
+
+/**
+ * Converts an INR cost to integer credits (paise: 1 credit = 0.01 INR).
+ * Used to compare against company.messageCredits (stored as integer paise).
+ */
+export const costToCredits = (costInr: number): number => Math.round(costInr);
+
 export const mapMessageSortByToColumn = (sortBy: string) => {
   const sortMap: Record<string, unknown> = {
     createdAt: messages.createdAt,
     status: messages.status,
     direction: messages.direction,
+    messageType: messages.messageType,
     from: messages.from,
     to: messages.to,
     cost: messages.cost,
@@ -181,3 +229,6 @@ export const resolveTemplateMessageParams = (
 
   return { templateHeaderParams, templateBodyParams };
 };
+
+/** Meta API expects numbers without the leading '+' */
+export const stripPlus = (phone: string) => phone.replace(/^\+/, "");

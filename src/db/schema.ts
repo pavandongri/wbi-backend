@@ -33,7 +33,15 @@ export const messageStatusEnum = pgEnum("message_status", [
   "sent",
   "delivered",
   "read",
-  "failed"
+  "failed",
+  "received"
+]);
+
+export const messageTypeEnum = pgEnum("message_type", [
+  "marketing",
+  "authentication",
+  "utility",
+  "text"
 ]);
 
 export const templateCategoryEnum = pgEnum("template_category", ["marketing", "utility"]);
@@ -275,6 +283,8 @@ export const messages = pgTable(
     templateId: uuid("template_id").references(() => templates.id, { onDelete: "set null" }),
     templateHeaderParams: text("template_header_params"),
     templateBodyParams: jsonb("template_body_params").$type<string[]>(),
+    wamid: text("wamid"),
+    messageType: messageTypeEnum("message_type").default("text").notNull(),
     status: messageStatusEnum("status").default("queued").notNull(),
     direction: messageDirectionEnum("direction").notNull(),
     failedReason: text("failed_reason"),

@@ -12,6 +12,9 @@ export type envType = {
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: string;
   WEBHOOK_CALLBACK_URL: string;
   GRAPH_API_BASE: string;
+  MARKETING_MESSAGE_COST: string;
+  UTILITY_MESSAGE_COST: string;
+  AUTHENTICATION_MESSAGE_COST: string;
 };
 
 export type AuthUserDetails = {

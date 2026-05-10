@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
+import { ApiError } from "utils/api-error.utils";
 import { apiSuccessResponse } from "utils/api-response";
 import { getIdParam } from "utils/helpers";
 import * as companiesService from "../services/companies.service";
@@ -53,6 +54,27 @@ export const deleteCompany = async (req: Request, res: Response): Promise<Respon
   return apiSuccessResponse(req, res, {
     data: result,
     message: HTTP_MESSAGES.SUCCESS.DELETED,
+    statusCode: HTTP_STATUS.OK
+  });
+};
+
+export const exchangeCode = async (req: Request, res: Response): Promise<Response> => {
+  const { code, wabaId, phoneNumberId } = req.body;
+
+  if (!code) throw new ApiError(HTTP_STATUS.BAD_REQUEST, "code is required");
+  if (!wabaId) throw new ApiError(HTTP_STATUS.BAD_REQUEST, "waba_id is required");
+  if (!phoneNumberId) throw new ApiError(HTTP_STATUS.BAD_REQUEST, "phone_number_id is required");
+
+  const result = await companiesService.exchangeCodeAndStoreAssets(
+    code,
+    wabaId,
+    phoneNumberId,
+    req.auth!
+  );
+
+  return apiSuccessResponse(req, res, {
+    data: result,
+    message: "WhatsApp Business Account connected successfully",
     statusCode: HTTP_STATUS.OK
   });
 };
