@@ -60,6 +60,29 @@ export const createCompany = async (
   }
 };
 
+export const getCompanyByIdExternal = async (id: string) => {
+  assertUuidParam(id);
+
+  const [company] = await db
+    .select({
+      name: companies.name,
+      category: companies.category,
+      address: companies.address,
+      city: companies.city,
+      state: companies.state,
+      country: companies.country
+    })
+    .from(companies)
+    .where(and(eq(companies.id, id), eq(companies.status, "active")))
+    .limit(1);
+
+  if (!company) {
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
+  }
+
+  return company;
+};
+
 export const getCompanyById = async (id: string, auth: AuthContext): Promise<Company> => {
   assertUuidParam(id);
 

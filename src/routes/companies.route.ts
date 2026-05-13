@@ -8,6 +8,7 @@ const router = Router();
 
 router.post("/", requireAuth, asyncHandler(companiesController.createCompany));
 router.get("/", requireAuth, asyncHandler(companiesController.listCompanies));
+router.get("/external/:id", asyncHandler(companiesController.getCompanyByIdFromExternal));
 router.get("/:id", requireAuth, asyncHandler(companiesController.getCompanyById));
 router.patch("/:id", requireAuth, asyncHandler(companiesController.updateCompany));
 router.delete("/:id", requireAuth, asyncHandler(companiesController.deleteCompany));

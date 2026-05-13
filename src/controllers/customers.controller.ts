@@ -15,6 +15,28 @@ export const createCustomer = async (req: Request, res: Response): Promise<Respo
   });
 };
 
+export const createCustomerExternal = async (req: Request, res: Response): Promise<Response> => {
+  const body = req.body as Record<string, unknown>;
+  const created = await customersService.createCustomerExternal({
+    name: body.name as string,
+    phone: body.phone as string,
+    email: body.email as string | undefined,
+    city: body.city as string | undefined,
+    state: body.state as string | undefined,
+    country: body.country as string | undefined,
+    zipcode: body.zipcode as string | undefined,
+    address: body.address as string | undefined,
+    tags: body.tags,
+    companyId: req.params.companyId as string
+  });
+
+  return apiSuccessResponse(req, res, {
+    data: created,
+    message: HTTP_MESSAGES.SUCCESS.CREATED,
+    statusCode: HTTP_STATUS.CREATED
+  });
+};
+
 export const listCustomers = async (req: Request, res: Response): Promise<Response> => {
   const list = await customersService.listCustomers(
     req.query as Record<string, unknown>,

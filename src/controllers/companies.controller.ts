@@ -38,6 +38,19 @@ export const getCompanyById = async (req: Request, res: Response): Promise<Respo
   });
 };
 
+export const getCompanyByIdFromExternal = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const id = getIdParam(req.params.id);
+  const company = await companiesService.getCompanyByIdExternal(id);
+  return apiSuccessResponse(req, res, {
+    data: company,
+    message: HTTP_MESSAGES.SUCCESS.DATA_FETCHED,
+    statusCode: HTTP_STATUS.OK
+  });
+};
+
 export const updateCompany = async (req: Request, res: Response): Promise<Response> => {
   const id = getIdParam(req.params.id);
   const updated = await companiesService.updateCompany(id, req.body, req.auth!);

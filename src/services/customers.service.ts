@@ -107,6 +107,74 @@ export const createCustomer = async (
   }
 };
 
+export const createCustomerExternal = async (payload: CreateCustomerPayload): Promise<Customer> => {
+  if (!payload?.name || !payload?.phone) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.BAD_REQUEST);
+  }
+
+  if (!payload?.companyId) {
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, `companyId is required`);
+  }
+
+  const companyRows = await db
+    .select({ id: companies.id })
+    .from(companies)
+    .where(and(eq(companies.id, payload.companyId), eq(companies.status, "active")))
+    .limit(1);
+
+  if (!companyRows[0]) {
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, "invalid company id");
+  }
+
+  const [existingCustomer] = await db
+    .select()
+    .from(customers)
+    .where(and(eq(customers.phone, payload.phone), eq(customers.isActive, true)))
+    .limit(1);
+
+  if (existingCustomer) {
+    throw new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      `Customer with phone ${payload.phone} already exists`
+    );
+  }
+
+  const customerInsert = {
+    companyId: payload.companyId,
+    name: payload.name,
+    phone: payload.phone,
+    email: payload.email,
+    city: payload.city,
+    state: payload.state,
+    country: payload.country,
+    zipcode: payload.zipcode,
+    address: payload.address,
+    tags: payload.tags,
+    isActive: true
+  };
+
+  try {
+    const customerRows = await db.insert(customers).values(customerInsert).returning();
+    const createdCustomer = customerRows[0];
+    if (!createdCustomer) {
+      throw new ApiError(HTTP_STATUS.INTERNAL_SERVER_ERROR, "failed to create customer..");
+    }
+
+    await db
+      .insert(customerCompanyMappings)
+      .values({
+        customerId: createdCustomer.id,
+        companyId: payload.companyId
+      })
+      .returning()
+      .then(() => undefined);
+
+    return createdCustomer;
+  } catch (err) {
+    return handleUniqueViolation(err);
+  }
+};
+
 export const getCustomerById = async (id: string, auth: AuthContext): Promise<Customer> => {
   assertUuidParam(id);
 
