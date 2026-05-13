@@ -44,15 +44,15 @@ export const messageTypeEnum = pgEnum("message_type", [
   "text"
 ]);
 
-export const templateCategoryEnum = pgEnum("template_category", ["marketing", "utility"]);
+export const templateCategoryEnum = pgEnum("template_category", ["MARKETING", "UTILITY"]);
 
 export const templateHeaderTypeEnum = pgEnum("template_header_type", [
-  "text",
-  "image",
-  "video",
-  "document",
-  "location",
-  "none"
+  "TEXT",
+  "IMAGE",
+  "VIDEO",
+  "DOCUMENT",
+  "LOCATION",
+  "NONE"
 ]);
 
 export const templateStatusEnum = pgEnum("template_status", [
@@ -231,6 +231,7 @@ export const templates = pgTable(
   "templates",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    metaTemplateId: text("meta_template_id"),
     name: text("name").notNull(),
     language: text("language").notNull(),
     category: templateCategoryEnum("category").notNull(),
@@ -244,7 +245,7 @@ export const templates = pgTable(
     footer: text("footer"),
     buttons: jsonb("buttons").$type<
       {
-        type: "quick_reply" | "url" | "phone_number";
+        type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER";
         text: string;
         url?: string;
         url_type?: "static" | "dynamic";

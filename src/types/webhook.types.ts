@@ -36,7 +36,13 @@ export type WhatsAppMessageStatus = {
   recipient_id: string;
   status: "sent" | "delivered" | "read" | "failed";
   timestamp: string;
-  errors?: { code: number; title: string }[];
+  errors?: {
+    code: number;
+    title: string;
+    error_data?: {
+      details?: string;
+    };
+  }[];
 };
 
 export type WhatsAppMessagesValue = {
@@ -45,4 +51,12 @@ export type WhatsAppMessagesValue = {
   contacts?: { profile: { name: string }; wa_id: string }[];
   messages?: WhatsAppInboundMessage[];
   statuses?: WhatsAppMessageStatus[];
+};
+
+export type MetaTemplateStatusWebhookValue = {
+  event: string;
+  message_template_id: number;
+  message_template_name: string;
+  message_template_language: string;
+  reason: string | null;
 };

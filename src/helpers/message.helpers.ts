@@ -179,7 +179,7 @@ export const loadActiveTemplateForCompany = async (
 };
 
 const templateNeedsHeaderParams = (template: TemplateRow): boolean =>
-  template.headerType !== "none" &&
+  template.headerType !== "NONE" &&
   Array.isArray(template.headerExample) &&
   template.headerExample.length > 0;
 

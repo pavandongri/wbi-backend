@@ -1,13 +1,12 @@
 import { ne } from "drizzle-orm";
 
+import { HTTP_STATUS } from "constants/http-status.contants";
 import {
   PATCHABLE_STATUSES,
   TEMPLATE_CATEGORIES,
   TEMPLATE_HEADER_TYPES,
   TEMPLATE_STATUSES
 } from "constants/template.constants";
-import { HTTP_MESSAGES } from "constants/http-message.constants";
-import { HTTP_STATUS } from "constants/http-status.contants";
 import { templates } from "db/schema";
 import {
   TemplateButton,
@@ -20,20 +19,20 @@ import { parseE164Phone } from "utils/phone.utils";
 
 export const parseTemplateCategory = (raw: unknown): TemplateCategory => {
   if (typeof raw !== "string") {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.VALIDATION_FAILED);
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "template category is required");
   }
-  const c = raw.trim().toLowerCase();
+  const c = raw.trim().toUpperCase();
   if (TEMPLATE_CATEGORIES.includes(c as TemplateCategory)) {
     return c as TemplateCategory;
   }
-  throw new ApiError(HTTP_STATUS.BAD_REQUEST, "category must be marketing or utility");
+  throw new ApiError(HTTP_STATUS.BAD_REQUEST, "invalid category must be MARKETING or UTILITY");
 };
 
 export const parseTemplateHeaderType = (raw: unknown): TemplateHeaderType => {
   if (typeof raw !== "string") {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.VALIDATION_FAILED);
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "header type is required");
   }
-  const h = raw.trim().toLowerCase();
+  const h = raw.trim().toUpperCase();
   if (TEMPLATE_HEADER_TYPES.includes(h as TemplateHeaderType)) {
     return h as TemplateHeaderType;
   }
@@ -52,7 +51,7 @@ export const parseTemplateStatusFilter = (raw: unknown): TemplateStatus | undefi
 
 export const parsePatchableTemplateStatus = (raw: unknown): TemplateStatus => {
   if (typeof raw !== "string") {
-    throw new ApiError(HTTP_STATUS.BAD_REQUEST, HTTP_MESSAGES.ERROR.VALIDATION_FAILED);
+    throw new ApiError(HTTP_STATUS.BAD_REQUEST, "invalid template status");
   }
   const s = raw.trim().toLowerCase();
   if (!PATCHABLE_STATUSES.includes(s as TemplateStatus)) {
@@ -127,7 +126,7 @@ export const assertTemplateButtons = (value: unknown): TemplateButton[] | undefi
     const text = textRaw.trim();
 
     if (type === "quick_reply") {
-      out.push({ type: "quick_reply", text });
+      out.push({ type: "QUICK_REPLY", text });
       continue;
     }
 
@@ -136,7 +135,7 @@ export const assertTemplateButtons = (value: unknown): TemplateButton[] | undefi
       if (typeof url !== "string" || url.trim().length === 0) {
         throw new ApiError(HTTP_STATUS.BAD_REQUEST, `buttons[${i}].url is required for type url`);
       }
-      const urlEntry: TemplateButton = { type: "url", text, url: url.trim() };
+      const urlEntry: TemplateButton = { type: "URL", text, url: url.trim() };
       const urlTypeRaw = row.url_type;
       if (urlTypeRaw !== undefined && urlTypeRaw !== null) {
         if (typeof urlTypeRaw !== "string") {
@@ -164,7 +163,7 @@ export const assertTemplateButtons = (value: unknown): TemplateButton[] | undefi
       );
     }
     out.push({
-      type: "phone_number",
+      type: "PHONE_NUMBER",
       text,
       phone_number: parseE164Phone(pn, `buttons[${i}].phone_number`)
     });

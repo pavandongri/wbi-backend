@@ -15,6 +15,10 @@ export type envType = {
   MARKETING_MESSAGE_COST: string;
   UTILITY_MESSAGE_COST: string;
   AUTHENTICATION_MESSAGE_COST: string;
+  AWS_REGION: string;
+  AWS_ACCESS_KEY_ID: string;
+  AWS_SECRET_ACCESS_KEY: string;
+  S3_BUCKET_NAME: string;
 };
 
 export type AuthUserDetails = {

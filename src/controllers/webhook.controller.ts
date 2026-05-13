@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { env } from "config/env";
 import { logger } from "logger/app.logger";
-import { WhatsAppMessagesValue } from "types/webhook.types";
+import { MetaTemplateStatusWebhookValue, WhatsAppMessagesValue } from "types/webhook.types";
 import * as webhookService from "../services/webhook.service";
 
 // GET /api/v1/webhooks/whatsapp — Facebook webhook verification
@@ -79,7 +79,10 @@ export const handleWebhook = (req: Request, res: Response): void => {
         }
 
         case "message_template_status_update": {
-          // TODO: handle template approval/rejection/disable events
+          const value = change.value as MetaTemplateStatusWebhookValue;
+          webhookService.handleTemplateStatusUpdate(entry.id, value).catch((err) => {
+            logger.error("handleTemplateStatusUpdate failed", { err });
+          });
           break;
         }
 

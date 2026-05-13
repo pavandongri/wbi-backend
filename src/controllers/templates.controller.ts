@@ -37,16 +37,6 @@ export const getTemplateById = async (req: Request, res: Response): Promise<Resp
   });
 };
 
-export const updateTemplate = async (req: Request, res: Response): Promise<Response> => {
-  const id = getIdParam(req.params.id);
-  const updated = await templatesService.updateTemplate(id, req.body, req.auth!);
-  return apiSuccessResponse(req, res, {
-    data: updated,
-    message: HTTP_MESSAGES.SUCCESS.UPDATED,
-    statusCode: HTTP_STATUS.OK
-  });
-};
-
 export const deleteTemplate = async (req: Request, res: Response): Promise<Response> => {
   const id = getIdParam(req.params.id);
   const result = await templatesService.deleteTemplate(id, req.auth!);

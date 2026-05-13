@@ -13,6 +13,7 @@ import subscriptionPlansRoute from "./subscription-plans.route";
 import subscriptionsRoute from "./subscriptions.route";
 import paymentsRoute from "./payments.route";
 import invoicesRoute from "./invoices.route";
+import mediaRoute from "./media.route";
 import webhooksRoute from "./webhooks.route";
 
 const router = Router();
@@ -31,6 +32,7 @@ router.use("/subscription-plans", subscriptionPlansRoute);
 router.use("/subscriptions", subscriptionsRoute);
 router.use("/payments", paymentsRoute);
 router.use("/invoices", invoicesRoute);
+router.use("/media", mediaRoute);
 router.use("/webhooks", webhooksRoute);
 
 export default router;

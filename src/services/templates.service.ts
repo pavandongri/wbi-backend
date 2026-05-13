@@ -3,35 +3,48 @@ import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { HTTP_MESSAGES } from "constants/http-message.constants";
 import { HTTP_STATUS } from "constants/http-status.contants";
 import { db } from "db/index";
-import { templates } from "db/schema";
+import { companies, templates } from "db/schema";
 import {
   assertTemplateButtons,
   assertTemplateStringArray,
   assertTemplateStringMatrix,
   mapTemplateSortByToColumn,
-  parsePatchableTemplateStatus,
   parseTemplateCategory,
   parseTemplateHeaderType,
   parseTemplateStatusFilter,
   templateNotDeletedCondition
 } from "helpers/template.helpers";
+import { logger } from "logger/app.logger";
+import {
+  deleteTemplateFromMeta,
+  fetchMetaTemplateStatuses,
+  submitTemplateToMeta
+} from "services/meta.service";
 import { AuthContext } from "types/common.types";
-import { CreateTemplatePayload, Template, UpdateTemplatePayload } from "types/templates.types";
+import { CreateTemplatePayload, Template } from "types/templates.types";
 import { ApiError } from "utils/api-error.utils";
 import { getMissingFields, handleUniqueViolation, isAdmin, isStaff } from "utils/helpers";
 import { assertUuidParam, buildListResponse, parseQ, parseSort } from "utils/list.utils";
 import { parsePagination } from "utils/pagination.utils";
+import { assertOwnS3Key, deleteS3Object, getS3SignedUrl } from "utils/s3.utils";
+
+const withSignedUrl = async (template: Template): Promise<Template> => {
+  if (!template.headerMediaUrl) return template;
+  const signedUrl = await getS3SignedUrl(template.headerMediaUrl);
+  return { ...template, headerMediaUrl: signedUrl };
+};
 
 export const createTemplate = async (
   payload: CreateTemplatePayload,
   auth: AuthContext
 ): Promise<Template> => {
+  logger.info("creating template");
   const missingInputs = getMissingFields(payload, [
     "name",
-    "language",
-    "body",
     "category",
-    "headerType"
+    "headerType",
+    "language",
+    "body"
   ]);
 
   if (missingInputs.length > 0) {
@@ -43,6 +56,10 @@ export const createTemplate = async (
   const headerExample = assertTemplateStringArray(payload.headerExample, "headerExample");
   const bodyExample = assertTemplateStringMatrix(payload.bodyExample, "bodyExample");
   const buttons = assertTemplateButtons(payload.buttons);
+
+  if (payload.headerMediaUrl) {
+    assertOwnS3Key(payload.headerMediaUrl, "headerMediaUrl");
+  }
 
   const insertValues = {
     companyId: auth.companyId,
@@ -75,19 +92,64 @@ export const createTemplate = async (
         : String(payload.rejectionMessage)
   };
 
+  let created: Template;
+
   try {
     const rows = await db.insert(templates).values(insertValues).returning();
-    const created = rows[0];
-    if (!created) {
+    const row = rows[0];
+    if (!row) {
       throw new ApiError(
         HTTP_STATUS.INTERNAL_SERVER_ERROR,
         HTTP_MESSAGES.ERROR.INTERNAL_SERVER_ERROR
       );
     }
-    return created;
+    created = row;
   } catch (err) {
+    logger.error("failed to insert the template to db");
     return handleUniqueViolation(err);
   }
+
+  logger.info("inserted the template to db");
+
+  const [company] = await db
+    .select({ wabaId: companies.wabaId, accessToken: companies.whatsappAccessToken })
+    .from(companies)
+    .where(eq(companies.id, auth.companyId))
+    .limit(1);
+
+  if (!company?.wabaId || !company?.accessToken) {
+    logger.error("Cannot submit template to Meta: company missing wabaId or accessToken", {
+      companyId: auth.companyId,
+      templateId: created.id
+    });
+    return created;
+  }
+
+  let metaResponse;
+  try {
+    metaResponse = await submitTemplateToMeta(company.wabaId, company.accessToken, created);
+    logger.info("created template in the meta");
+  } catch (err) {
+    logger.error("Meta template submission failed, rolling back DB insert", {
+      err,
+      templateId: created.id
+    });
+    await db.delete(templates).where(eq(templates.id, created.id));
+    throw new ApiError(
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      err instanceof Error ? err.message : "Failed to submit template to Meta"
+    );
+  }
+
+  const [updated] = await db
+    .update(templates)
+    .set({ metaTemplateId: metaResponse.id })
+    .where(eq(templates.id, created.id))
+    .returning();
+
+  logger.info("template creation success");
+
+  return updated ?? created;
 };
 
 export const getTemplateById = async (id: string, auth: AuthContext): Promise<Template> => {
@@ -115,7 +177,7 @@ export const getTemplateById = async (id: string, auth: AuthContext): Promise<Te
     throw new ApiError(HTTP_STATUS.FORBIDDEN, HTTP_MESSAGES.ERROR.FORBIDDEN);
   }
 
-  return row;
+  return withSignedUrl(row);
 };
 
 export const listTemplates = async (
@@ -128,6 +190,7 @@ export const listTemplates = async (
   total: number;
   totalPages: number;
 }> => {
+  logger.info("getting template list");
   const { page, limit, offset } = parsePagination(query);
   const q = parseQ(query);
   const { sortBy, sortOrder } = parseSort(query, {
@@ -174,19 +237,87 @@ export const listTemplates = async (
     db.select().from(templates).where(whereCond).limit(limit).offset(offset).orderBy(orderBy)
   ]);
 
+  logger.info("fetched templates list from db");
+
   const total = Number(countRows[0]?.total ?? 0);
 
-  return buildListResponse({ items: itemsRows as Template[], page, limit, total });
+  const items = await Promise.all((itemsRows as Template[]).map(withSignedUrl));
+
+  const response = buildListResponse({ items, page, limit, total });
+
+  logger.info("built response for tempate");
+
+  const pending = (itemsRows as Template[]).filter(
+    (t) => t.status === "pending" && !!t.metaTemplateId
+  );
+
+  if (pending.length > 0) {
+    void syncPendingTemplateStatuses(pending, auth.companyId).catch((err) =>
+      logger.error("Background template status sync failed", { err, companyId: auth.companyId })
+    );
+  }
+
+  logger.info("successfully fetched templates list");
+
+  return response;
 };
 
-export const updateTemplate = async (
-  id: string,
-  payload: UpdateTemplatePayload,
-  auth: AuthContext
-): Promise<Template> => {
+async function syncPendingTemplateStatuses(pending: Template[], companyId: string): Promise<void> {
+  logger.info("syncing template status from meta");
+  const [company] = await db
+    .select({ accessToken: companies.whatsappAccessToken })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1);
+
+  if (!company?.accessToken) return;
+
+  const metaStatuses = await fetchMetaTemplateStatuses(
+    pending.map((t) => t.metaTemplateId!),
+    company.accessToken
+  );
+
+  const statusMap = new Map(metaStatuses.map((s) => [s.id, s]));
+
+  const updates = pending.flatMap((t) => {
+    const meta = statusMap.get(t.metaTemplateId!);
+    if (!meta) return [];
+
+    const newStatus =
+      meta.status === "APPROVED"
+        ? ("approved" as const)
+        : meta.status === "REJECTED"
+          ? ("rejected" as const)
+          : null;
+
+    if (!newStatus) return [];
+
+    return [
+      {
+        id: t.id,
+        status: newStatus,
+        rejectionMessage: meta.rejected_reason ?? null
+      }
+    ];
+  });
+
+  if (updates.length === 0) return;
+
+  await Promise.all(
+    updates.map(({ id, status, rejectionMessage }) =>
+      db
+        .update(templates)
+        .set({ status, rejectionMessage, updatedAt: new Date() })
+        .where(eq(templates.id, id))
+    )
+  );
+}
+
+export const deleteTemplate = async (id: string, auth: AuthContext): Promise<{ id: string }> => {
+  logger.info("deleting template");
   assertUuidParam(id);
 
-  const conditions: SQL[] = [
+  const conditions = [
     eq(templates.id, id),
     templateNotDeletedCondition(),
     eq(templates.companyId, auth.companyId)
@@ -194,100 +325,44 @@ export const updateTemplate = async (
 
   const whereCond = and(...conditions);
 
-  const updateValues: Record<string, unknown> = {
-    updatedAt: new Date()
-  };
+  const existing = await db.select().from(templates).where(whereCond).limit(1);
+  const template = existing[0];
 
-  if (payload.name !== undefined) updateValues.name = String(payload.name).trim();
-  if (payload.language !== undefined) updateValues.language = String(payload.language).trim();
-  if (payload.category !== undefined)
-    updateValues.category = parseTemplateCategory(payload.category);
-  if (payload.headerType !== undefined) {
-    updateValues.headerType = parseTemplateHeaderType(payload.headerType);
-  }
-  if (payload.headerText !== undefined) {
-    updateValues.headerText = payload.headerText === null ? null : String(payload.headerText);
-  }
-  if (payload.headerMediaUrl !== undefined) {
-    updateValues.headerMediaUrl =
-      payload.headerMediaUrl === null ? null : String(payload.headerMediaUrl);
-  }
-  if (payload.headerMediaHandler !== undefined) {
-    updateValues.headerMediaHandler =
-      payload.headerMediaHandler === null ? null : String(payload.headerMediaHandler);
-  }
-  if (payload.headerExample !== undefined) {
-    updateValues.headerExample =
-      payload.headerExample === null
-        ? null
-        : assertTemplateStringArray(payload.headerExample, "headerExample");
-  }
-  if (payload.body !== undefined) updateValues.body = String(payload.body).trim();
-  if (payload.bodyExample !== undefined) {
-    updateValues.bodyExample =
-      payload.bodyExample === null
-        ? null
-        : assertTemplateStringMatrix(payload.bodyExample, "bodyExample");
-  }
-  if (payload.footer !== undefined) {
-    updateValues.footer = payload.footer === null ? null : String(payload.footer);
-  }
-  if (payload.buttons !== undefined) {
-    updateValues.buttons = payload.buttons === null ? null : assertTemplateButtons(payload.buttons);
-  }
-  if (payload.rejectionMessage !== undefined) {
-    updateValues.rejectionMessage =
-      payload.rejectionMessage === null ? null : String(payload.rejectionMessage);
-  }
-  if (payload.status !== undefined) {
-    updateValues.status = parsePatchableTemplateStatus(payload.status);
+  if (!template) {
+    throw new ApiError(HTTP_STATUS.NOT_FOUND, "template not found");
   }
 
-  try {
-    const rows = await db.update(templates).set(updateValues).where(whereCond).returning();
-    const updated = rows[0];
-    if (!updated) {
-      throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
+  const [company] = await db
+    .select({ wabaId: companies.wabaId, accessToken: companies.whatsappAccessToken })
+    .from(companies)
+    .where(eq(companies.id, auth.companyId))
+    .limit(1);
+
+  if (company?.wabaId && company?.accessToken) {
+    try {
+      await deleteTemplateFromMeta(company.wabaId, company.accessToken, template.name);
+      logger.info("successfully deleted tempate from meta");
+    } catch (err) {
+      logger.error("Failed to delete template from Meta", { err, templateId: id });
     }
-    return updated as Template;
-  } catch (err) {
-    return handleUniqueViolation(err);
-  }
-};
-
-export const deleteTemplate = async (id: string, auth: AuthContext): Promise<{ id: string }> => {
-  assertUuidParam(id);
-
-  const conditions = [eq(templates.id, id), templateNotDeletedCondition()];
-
-  if (isAdmin(auth.role)) {
-    conditions.push(eq(templates.companyId, auth.companyId));
   }
 
-  if (isStaff(auth.role)) {
-    conditions.push(eq(templates.userId, auth.userId));
+  // Hard delete from DB
+  await db.delete(templates).where(eq(templates.id, id));
+
+  logger.info("deleted template from db");
+
+  // Delete media from S3 if present
+  if (template.headerMediaUrl) {
+    deleteS3Object(template.headerMediaUrl).catch((err) => {
+      logger.error("Failed to delete template media from S3", {
+        err,
+        key: template.headerMediaUrl
+      });
+    });
+
+    logger.info("deleted tempalte media from s3");
   }
 
-  const whereCond = and(...conditions);
-
-  const rows = await db
-    .update(templates)
-    .set({
-      status: "deleted",
-      deletedBy: auth.userId,
-      deletedAt: new Date(),
-      updatedAt: new Date()
-    })
-    .where(whereCond)
-    .returning({ id: templates.id });
-
-  const deleted = rows[0];
-
-  // TODO: delete this template from meta also
-
-  if (!deleted) {
-    throw new ApiError(HTTP_STATUS.NOT_FOUND, HTTP_MESSAGES.ERROR.NOT_FOUND);
-  }
-
-  return { id: deleted.id };
+  return { id };
 };

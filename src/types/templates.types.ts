@@ -2,14 +2,14 @@ import { templates } from "db/schema";
 
 export type Template = typeof templates.$inferSelect;
 
-export type TemplateCategory = "marketing" | "utility";
+export type TemplateCategory = "MARKETING" | "UTILITY";
 
-export type TemplateHeaderType = "text" | "image" | "video" | "document" | "location" | "none";
+export type TemplateHeaderType = "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "LOCATION" | "NONE";
 
 export type TemplateStatus = "pending" | "approved" | "rejected" | "deleted";
 
 export type TemplateButton = {
-  type: "quick_reply" | "url" | "phone_number";
+  type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER";
   text: string;
   url?: string;
   url_type?: "static" | "dynamic";
@@ -31,8 +31,4 @@ export type CreateTemplatePayload = {
   footer?: string | null;
   buttons?: TemplateButton[] | null;
   rejectionMessage?: string | null;
-};
-
-export type UpdateTemplatePayload = Partial<CreateTemplatePayload> & {
-  status?: string;
 };

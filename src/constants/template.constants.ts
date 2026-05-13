@@ -1,14 +1,14 @@
 import type { TemplateCategory, TemplateHeaderType, TemplateStatus } from "types/templates.types";
 
-export const TEMPLATE_CATEGORIES: readonly TemplateCategory[] = ["marketing", "utility"];
+export const TEMPLATE_CATEGORIES: readonly TemplateCategory[] = ["MARKETING", "UTILITY"];
 
 export const TEMPLATE_HEADER_TYPES: readonly TemplateHeaderType[] = [
-  "text",
-  "image",
-  "video",
-  "document",
-  "location",
-  "none"
+  "TEXT",
+  "IMAGE",
+  "VIDEO",
+  "DOCUMENT",
+  "LOCATION",
+  "NONE"
 ];
 
 export const TEMPLATE_STATUSES: readonly TemplateStatus[] = [

@@ -50,6 +50,20 @@
       "when": 1778274158483,
       "tag": "0006_added_messageType_to_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778533680606,
+      "tag": "0007_changed_template_enums",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778536412493,
+      "tag": "0008_added_metaTemplateId",
+      "breakpoints": true
     }
   ]
 }

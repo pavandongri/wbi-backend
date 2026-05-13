@@ -1,12 +1,16 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { env } from "config/env";
 import { db } from "db/index";
-import { companies, messages } from "db/schema";
+import { companies, messages, templates } from "db/schema";
 import { logger } from "logger/app.logger";
-import { WhatsAppMessageStatus, WhatsAppMessagesValue } from "types/webhook.types";
+import {
+  MetaTemplateStatusWebhookValue,
+  WhatsAppMessageStatus,
+  WhatsAppMessagesValue
+} from "types/webhook.types";
 
 export const verifyWebhookSignature = (rawBody: Buffer, signature: string): boolean => {
   logger.info("Verifying webhook signature");
@@ -74,7 +78,8 @@ export const handleMessageStatusUpdates = async (
     }
 
     if (newStatus === "failed") {
-      updateFields.failedReason = errors?.[0]?.title ?? "Delivery failed";
+      updateFields.failedReason =
+        errors?.[0]?.error_data?.details ?? errors?.[0]?.title ?? "Delivery failed";
     }
 
     updates.push({
@@ -98,6 +103,61 @@ export const handleMessageStatusUpdates = async (
     logger.error("Failed to batch update message statuses from webhook", {
       err
     });
+  }
+};
+
+export const handleTemplateStatusUpdate = async (
+  wabaId: string,
+  value: MetaTemplateStatusWebhookValue
+): Promise<void> => {
+  logger.info("Handling template status update webhook");
+
+  const { event, message_template_name, reason } = value;
+
+  logger.info("Template status webhook event", { event, template: message_template_name, reason });
+
+  let newStatus: "approved" | "rejected" | null = null;
+
+  if (event === "APPROVED") newStatus = "approved";
+  else if (event === "REJECTED" || event === "DISABLED") newStatus = "rejected";
+
+  if (!newStatus) {
+    logger.info("Template status webhook event not handled", {
+      event,
+      template: message_template_name
+    });
+    return;
+  }
+
+  const [company] = await db
+    .select({ id: companies.id })
+    .from(companies)
+    .where(eq(companies.wabaId, wabaId))
+    .limit(1);
+
+  if (!company) {
+    logger.warn("Template status webhook for unknown wabaId", { wabaId });
+    return;
+  }
+
+  const updateFields: Record<string, unknown> = { status: newStatus, updatedAt: new Date() };
+  if (newStatus === "rejected" && reason) {
+    updateFields.rejectionMessage = reason;
+  }
+
+  try {
+    await db
+      .update(templates)
+      .set(updateFields)
+      .where(and(eq(templates.name, message_template_name), eq(templates.companyId, company.id)));
+
+    logger.info("Template status updated from webhook", {
+      name: message_template_name,
+      status: newStatus,
+      companyId: company.id
+    });
+  } catch (err) {
+    logger.error("Failed to update template status from webhook", { err });
   }
 };
 
